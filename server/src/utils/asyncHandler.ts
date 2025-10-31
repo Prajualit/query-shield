@@ -4,8 +4,9 @@ declare global {
   namespace Express {
     interface Request {
       user?: {
-        id: string; // Prisma uses string IDs by default
-        [key: string]: any;
+        id: string;
+        email: string;
+        role: string;
       };
     }
   }
