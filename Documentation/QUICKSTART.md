@@ -16,7 +16,7 @@ cd server
 npm install bcryptjs jsonwebtoken dotenv express-validator
 npm install @types/bcryptjs @types/jsonwebtoken --save-dev
 
-# In client directory  
+# In client directory
 cd ../client
 npm install axios zustand
 npm install @tanstack/react-query
@@ -72,7 +72,7 @@ npx prisma generate
 Create `server/src/types/index.ts`:
 
 ```typescript
-import { Request } from 'express';
+import { Request } from "express";
 
 export interface UserPayload {
   id: string;
@@ -101,20 +101,22 @@ export interface LoginDTO {
 Create `server/src/utils/jwt.util.ts`:
 
 ```typescript
-import jwt from 'jsonwebtoken';
-import { UserPayload } from '../types';
+import jwt from "jsonwebtoken";
+import { UserPayload } from "../types";
 
 const JWT_SECRET = process.env.JWT_SECRET!;
 const JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET!;
-const JWT_EXPIRE = process.env.JWT_EXPIRE || '7d';
-const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || '30d';
+const JWT_EXPIRE = process.env.JWT_EXPIRE || "7d";
+const JWT_REFRESH_EXPIRE = process.env.JWT_REFRESH_EXPIRE || "30d";
 
 export const generateAccessToken = (payload: UserPayload): string => {
   return jwt.sign(payload, JWT_SECRET, { expiresIn: JWT_EXPIRE });
 };
 
 export const generateRefreshToken = (payload: UserPayload): string => {
-  return jwt.sign(payload, JWT_REFRESH_SECRET, { expiresIn: JWT_REFRESH_EXPIRE });
+  return jwt.sign(payload, JWT_REFRESH_SECRET, {
+    expiresIn: JWT_REFRESH_EXPIRE,
+  });
 };
 
 export const verifyAccessToken = (token: string): UserPayload => {
@@ -131,10 +133,10 @@ export const verifyRefreshToken = (token: string): UserPayload => {
 Create `server/src/middleware/auth.middleware.ts`:
 
 ```typescript
-import { Response, NextFunction } from 'express';
-import { AuthRequest } from '../types';
-import { verifyAccessToken } from '../utils/jwt.util';
-import { ApiError } from '../utils/apiError';
+import { Response, NextFunction } from "express";
+import { AuthRequest } from "../types";
+import { verifyAccessToken } from "../utils/jwt.util";
+import { ApiError } from "../utils/apiError";
 
 export const authenticate = (
   req: AuthRequest,
@@ -143,29 +145,29 @@ export const authenticate = (
 ) => {
   try {
     const authHeader = req.headers.authorization;
-    
-    if (!authHeader || !authHeader.startsWith('Bearer ')) {
-      throw new ApiError(401, 'No token provided');
+
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      throw new ApiError(401, "No token provided");
     }
 
     const token = authHeader.substring(7);
     const decoded = verifyAccessToken(token);
-    
+
     req.user = decoded;
     next();
   } catch (error) {
-    next(new ApiError(401, 'Invalid or expired token'));
+    next(new ApiError(401, "Invalid or expired token"));
   }
 };
 
 export const authorize = (...roles: string[]) => {
   return (req: AuthRequest, res: Response, next: NextFunction) => {
     if (!req.user) {
-      return next(new ApiError(401, 'Unauthorized'));
+      return next(new ApiError(401, "Unauthorized"));
     }
 
     if (!roles.includes(req.user.role)) {
-      return next(new ApiError(403, 'Forbidden - Insufficient permissions'));
+      return next(new ApiError(403, "Forbidden - Insufficient permissions"));
     }
 
     next();
@@ -178,14 +180,14 @@ export const authorize = (...roles: string[]) => {
 Create `server/src/controllers/auth.controller.ts`:
 
 ```typescript
-import { Response, NextFunction } from 'express';
-import bcrypt from 'bcryptjs';
-import { prisma } from '../db';
-import { AuthRequest, RegisterDTO, LoginDTO } from '../types';
-import { ApiError } from '../utils/apiError';
-import { ApiResponse } from '../utils/apiResponse';
-import { asyncHandler } from '../utils/asyncHandler';
-import { generateAccessToken, generateRefreshToken } from '../utils/jwt.util';
+import { Response, NextFunction } from "express";
+import bcrypt from "bcryptjs";
+import { prisma } from "../db";
+import { AuthRequest, RegisterDTO, LoginDTO } from "../types";
+import { ApiError } from "../utils/apiError";
+import { ApiResponse } from "../utils/apiResponse";
+import { asyncHandler } from "../utils/asyncHandler";
+import { generateAccessToken, generateRefreshToken } from "../utils/jwt.util";
 
 export const register = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -194,7 +196,7 @@ export const register = asyncHandler(
     // Check if user exists
     const existingUser = await prisma.user.findUnique({ where: { email } });
     if (existingUser) {
-      throw new ApiError(400, 'Email already registered');
+      throw new ApiError(400, "Email already registered");
     }
 
     // Hash password
@@ -230,11 +232,15 @@ export const register = asyncHandler(
     });
 
     res.status(201).json(
-      new ApiResponse(201, {
-        user,
-        accessToken,
-        refreshToken,
-      }, 'User registered successfully')
+      new ApiResponse(
+        201,
+        {
+          user,
+          accessToken,
+          refreshToken,
+        },
+        "User registered successfully"
+      )
     );
   }
 );
@@ -246,13 +252,13 @@ export const login = asyncHandler(
     // Find user
     const user = await prisma.user.findUnique({ where: { email } });
     if (!user) {
-      throw new ApiError(401, 'Invalid credentials');
+      throw new ApiError(401, "Invalid credentials");
     }
 
     // Verify password
     const isPasswordValid = await bcrypt.compare(password, user.password);
     if (!isPasswordValid) {
-      throw new ApiError(401, 'Invalid credentials');
+      throw new ApiError(401, "Invalid credentials");
     }
 
     // Generate tokens
@@ -272,11 +278,15 @@ export const login = asyncHandler(
     const { password: _, ...userWithoutPassword } = user;
 
     res.status(200).json(
-      new ApiResponse(200, {
-        user: userWithoutPassword,
-        accessToken,
-        refreshToken,
-      }, 'Login successful')
+      new ApiResponse(
+        200,
+        {
+          user: userWithoutPassword,
+          accessToken,
+          refreshToken,
+        },
+        "Login successful"
+      )
     );
   }
 );
@@ -295,10 +305,12 @@ export const getCurrentUser = asyncHandler(
     });
 
     if (!user) {
-      throw new ApiError(404, 'User not found');
+      throw new ApiError(404, "User not found");
     }
 
-    res.status(200).json(new ApiResponse(200, user, 'User retrieved successfully'));
+    res
+      .status(200)
+      .json(new ApiResponse(200, user, "User retrieved successfully"));
   }
 );
 ```
@@ -308,15 +320,19 @@ export const getCurrentUser = asyncHandler(
 Create `server/src/routes/auth.routes.ts`:
 
 ```typescript
-import { Router } from 'express';
-import { register, login, getCurrentUser } from '../controllers/auth.controller';
-import { authenticate } from '../middleware/auth.middleware';
+import { Router } from "express";
+import {
+  register,
+  login,
+  getCurrentUser,
+} from "../controllers/auth.controller";
+import { authenticate } from "../middleware/auth.middleware";
 
 const router = Router();
 
-router.post('/register', register);
-router.post('/login', login);
-router.get('/me', authenticate, getCurrentUser);
+router.post("/register", register);
+router.post("/login", login);
+router.get("/me", authenticate, getCurrentUser);
 
 export default router;
 ```
@@ -326,9 +342,9 @@ export default router;
 Update `server/src/app.ts`:
 
 ```typescript
-import express from 'express';
-import cors from 'cors';
-import authRoutes from './routes/auth.routes';
+import express from "express";
+import cors from "cors";
+import authRoutes from "./routes/auth.routes";
 
 const app = express();
 
@@ -336,14 +352,14 @@ app.use(cors());
 app.use(express.json());
 
 // Routes
-app.use('/api/auth', authRoutes);
+app.use("/api/auth", authRoutes);
 
 // Error handler
 app.use((err: any, req: any, res: any, next: any) => {
   const statusCode = err.statusCode || 500;
   res.status(statusCode).json({
     success: false,
-    message: err.message || 'Internal Server Error',
+    message: err.message || "Internal Server Error",
     errors: err.errors || [],
   });
 });
@@ -392,39 +408,39 @@ export interface Pattern {
 
 export const PATTERNS: Pattern[] = [
   {
-    type: 'EMAIL',
+    type: "EMAIL",
     regex: /\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b/g,
-    description: 'Email address',
+    description: "Email address",
     confidence: 95,
   },
   {
-    type: 'PHONE',
+    type: "PHONE",
     regex: /\b(\+\d{1,3}[- ]?)?\(?\d{3}\)?[- ]?\d{3}[- ]?\d{4}\b/g,
-    description: 'Phone number',
+    description: "Phone number",
     confidence: 85,
   },
   {
-    type: 'CREDIT_CARD',
+    type: "CREDIT_CARD",
     regex: /\b\d{4}[- ]?\d{4}[- ]?\d{4}[- ]?\d{4}\b/g,
-    description: 'Credit card number',
+    description: "Credit card number",
     confidence: 90,
   },
   {
-    type: 'SSN',
+    type: "SSN",
     regex: /\b\d{3}-\d{2}-\d{4}\b/g,
-    description: 'Social Security Number',
+    description: "Social Security Number",
     confidence: 98,
   },
   {
-    type: 'IP_ADDRESS',
+    type: "IP_ADDRESS",
     regex: /\b(?:\d{1,3}\.){3}\d{1,3}\b/g,
-    description: 'IP Address',
+    description: "IP Address",
     confidence: 85,
   },
 ];
 
 export const getPatternByType = (type: string): Pattern | undefined => {
-  return PATTERNS.find(p => p.type === type);
+  return PATTERNS.find((p) => p.type === type);
 };
 ```
 
@@ -433,7 +449,7 @@ export const getPatternByType = (type: string): Pattern | undefined => {
 Create `server/src/services/detection/detector.service.ts`:
 
 ```typescript
-import { PATTERNS, Pattern } from './patterns';
+import { PATTERNS, Pattern } from "./patterns";
 
 export interface DetectedItem {
   type: string;
@@ -447,10 +463,10 @@ export class DetectorService {
   detect(text: string, patternTypes?: string[]): DetectedItem[] {
     const results: DetectedItem[] = [];
     const patterns = patternTypes
-      ? PATTERNS.filter(p => patternTypes.includes(p.type))
+      ? PATTERNS.filter((p) => patternTypes.includes(p.type))
       : PATTERNS;
 
-    patterns.forEach(pattern => {
+    patterns.forEach((pattern) => {
       const matches = text.matchAll(pattern.regex);
       for (const match of matches) {
         if (match.index !== undefined) {
@@ -481,19 +497,20 @@ export const detectorService = new DetectorService();
 Create `server/src/services/detection/sanitizer.service.ts`:
 
 ```typescript
-import { DetectedItem } from './detector.service';
+import { DetectedItem } from "./detector.service";
 
 export class SanitizerService {
   redact(text: string, items: DetectedItem[]): string {
     let sanitized = text;
     let offset = 0;
 
-    items.forEach(item => {
+    items.forEach((item) => {
       const replacement = `[${item.type}_REDACTED]`;
       const start = item.startIndex + offset;
       const end = item.endIndex + offset;
-      
-      sanitized = sanitized.substring(0, start) + replacement + sanitized.substring(end);
+
+      sanitized =
+        sanitized.substring(0, start) + replacement + sanitized.substring(end);
       offset += replacement.length - (item.endIndex - item.startIndex);
     });
 
@@ -504,27 +521,35 @@ export class SanitizerService {
     let sanitized = text;
     let offset = 0;
 
-    items.forEach(item => {
+    items.forEach((item) => {
       const length = item.value.length;
       const visibleChars = Math.min(4, Math.floor(length / 3));
-      const replacement = '*'.repeat(length - visibleChars) + item.value.slice(-visibleChars);
-      
+      const replacement =
+        "*".repeat(length - visibleChars) + item.value.slice(-visibleChars);
+
       const start = item.startIndex + offset;
       const end = item.endIndex + offset;
-      
-      sanitized = sanitized.substring(0, start) + replacement + sanitized.substring(end);
+
+      sanitized =
+        sanitized.substring(0, start) + replacement + sanitized.substring(end);
       offset += replacement.length - (item.endIndex - item.startIndex);
     });
 
     return sanitized;
   }
 
-  sanitize(text: string, items: DetectedItem[], action: 'REDACT' | 'MASK' | 'BLOCK'): string {
-    if (action === 'BLOCK') {
-      throw new Error('Sensitive data detected. Request blocked.');
+  sanitize(
+    text: string,
+    items: DetectedItem[],
+    action: "REDACT" | "MASK" | "BLOCK"
+  ): string {
+    if (action === "BLOCK") {
+      throw new Error("Sensitive data detected. Request blocked.");
     }
 
-    return action === 'REDACT' ? this.redact(text, items) : this.mask(text, items);
+    return action === "REDACT"
+      ? this.redact(text, items)
+      : this.mask(text, items);
   }
 }
 
@@ -536,25 +561,31 @@ export const sanitizerService = new SanitizerService();
 Create `server/src/routes/test.routes.ts`:
 
 ```typescript
-import { Router } from 'express';
-import { detectorService } from '../services/detection/detector.service';
-import { sanitizerService } from '../services/detection/sanitizer.service';
-import { ApiResponse } from '../utils/apiResponse';
+import { Router } from "express";
+import { detectorService } from "../services/detection/detector.service";
+import { sanitizerService } from "../services/detection/sanitizer.service";
+import { ApiResponse } from "../utils/apiResponse";
 
 const router = Router();
 
-router.post('/detect', (req, res) => {
+router.post("/detect", (req, res) => {
   const { text } = req.body;
-  
+
   const detectedItems = detectorService.detect(text);
   const sanitized = sanitizerService.redact(text, detectedItems);
-  
-  res.json(new ApiResponse(200, {
-    original: text,
-    sanitized,
-    detected: detectedItems,
-    count: detectedItems.length,
-  }, 'Detection completed'));
+
+  res.json(
+    new ApiResponse(
+      200,
+      {
+        original: text,
+        sanitized,
+        detected: detectedItems,
+        count: detectedItems.length,
+      },
+      "Detection completed"
+    )
+  );
 });
 
 export default router;
@@ -563,8 +594,8 @@ export default router;
 Add to `app.ts`:
 
 ```typescript
-import testRoutes from './routes/test.routes';
-app.use('/api/test', testRoutes);
+import testRoutes from "./routes/test.routes";
+app.use("/api/test", testRoutes);
 ```
 
 Test it:
@@ -582,36 +613,36 @@ curl -X POST http://localhost:5000/api/test/detect \
 Update `client/src/app/page.tsx`:
 
 ```typescript
-'use client';
+"use client";
 
-import { useState } from 'react';
+import { useState } from "react";
 
 export default function Home() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [result, setResult] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [result, setResult] = useState("");
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+      const response = await fetch("http://localhost:5000/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email, password }),
       });
-      
+
       const data = await response.json();
       setResult(JSON.stringify(data, null, 2));
     } catch (error) {
-      setResult('Error: ' + error);
+      setResult("Error: " + error);
     }
   };
 
   return (
     <main className="p-8 max-w-md mx-auto">
       <h1 className="text-2xl font-bold mb-4">QueryShield Login</h1>
-      
+
       <form onSubmit={handleLogin} className="space-y-4">
         <input
           type="email"
@@ -634,7 +665,7 @@ export default function Home() {
           Login
         </button>
       </form>
-      
+
       {result && (
         <pre className="mt-4 p-4 bg-gray-100 rounded overflow-auto">
           {result}
@@ -671,24 +702,28 @@ After these 2 hours, you have:
 ## 🆘 Troubleshooting
 
 **Database connection error?**
+
 ```bash
 # Make sure PostgreSQL is running
 # Update DATABASE_URL in .env with correct credentials
 ```
 
 **Module not found errors?**
+
 ```bash
 cd server && npm install
 cd client && npm install
 ```
 
 **Prisma errors?**
+
 ```bash
 npx prisma generate
 npx prisma migrate dev
 ```
 
 **Port already in use?**
+
 ```bash
 # Change PORT in .env to something else (e.g., 5001)
 ```
@@ -700,6 +735,7 @@ npx prisma migrate dev
 You now have a working foundation. Follow the ROADMAP.md to continue building!
 
 **Questions?** Check the other documentation files:
+
 - `ROADMAP.md` - Complete development plan
 - `PHASE_1_CHECKLIST.md` - Detailed Phase 1 tasks
 - `ARCHITECTURE.md` - System design overview
