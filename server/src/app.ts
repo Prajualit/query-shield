@@ -3,6 +3,10 @@ import cors from 'cors';
 import authRoutes from './routes/auth.routes';
 import firewallRoutes from './routes/firewall.routes';
 import ruleRoutes from './routes/rule.routes';
+import proxyRoutes from './routes/proxy.routes';
+import auditRoutes from './routes/audit.routes';
+import analyticsRoutes from './routes/analytics.routes';
+import apikeyRoutes from './routes/apikey.routes';
 
 const app = express();
 
@@ -12,6 +16,10 @@ app.use(express.json());
 app.use('/api/auth', authRoutes);
 app.use('/api/firewalls', firewallRoutes);
 app.use('/api/firewalls/:firewallId/rules', ruleRoutes);
+app.use('/api/proxy', proxyRoutes);
+app.use('/api/audit-logs', auditRoutes);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/api-keys', apikeyRoutes);
 
 app.use((err: any, req: any, res: any, next: any) => {
   const statusCode = err.statusCode || 500;
