@@ -1,0 +1,167 @@
+/**
+ * TypeScript types for QueryShield API
+ */
+
+export interface User {
+  id: string;
+  email: string;
+  name: string | null;
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AuthResponse {
+  success: boolean;
+  data: {
+    accessToken: string;
+    refreshToken: string;
+    user: User;
+  };
+  message: string;
+}
+
+export interface Firewall {
+  id: string;
+  name: string;
+  description: string | null;
+  isActive: boolean;
+  userId: string;
+  createdAt: string;
+  updatedAt: string;
+  rules?: Rule[];
+  _count?: {
+    rules: number;
+    auditLogs: number;
+  };
+}
+
+export interface Rule {
+  id: string;
+  name: string;
+  type: RuleType;
+  pattern: string;
+  action: Action;
+  priority: number;
+  isActive: boolean;
+  firewallId: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export type RuleType =
+  | 'EMAIL'
+  | 'PHONE'
+  | 'CREDIT_CARD'
+  | 'SSN'
+  | 'API_KEY'
+  | 'IP_ADDRESS'
+  | 'CUSTOM_REGEX';
+
+export type Action = 'REDACT' | 'MASK' | 'BLOCK' | 'WARN' | 'ALLOW';
+
+export interface AuditLog {
+  id: string;
+  userId: string;
+  firewallId: string | null;
+  inputText: string;
+  sanitizedText: string;
+  detectedIssues: DetectedIssue[];
+  action: string;
+  aiProvider: string | null;
+  metadata: Record<string, unknown> | null;
+  createdAt: string;
+  firewall?: {
+    id: string;
+    name: string;
+  };
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+}
+
+export interface DetectedIssue {
+  type: RuleType;
+  value: string;
+  startIndex: number;
+  endIndex: number;
+  confidence: number;
+}
+
+export interface ApiKey {
+  id: string;
+  name: string;
+  isActive: boolean;
+  lastUsed: string | null;
+  createdAt: string;
+  apiKey?: string; // Only returned on creation
+}
+
+export interface DashboardStats {
+  overview: {
+    totalFirewalls: number;
+    activeFirewalls: number;
+    totalRules: number;
+    totalRequests: number;
+  };
+  requests: {
+    blocked: number;
+    sanitized: number;
+    allowed: number;
+    total: number;
+  };
+  detectionTypes: { [key: string]: number };
+}
+
+export interface TimelineData {
+  date: string;
+  blocked: number;
+  sanitized: number;
+  allowed: number;
+  total: number;
+}
+
+export interface Pattern {
+  type: string;
+  count: number;
+}
+
+export interface FirewallPerformance {
+  firewallId: string;
+  firewallName: string;
+  isActive: boolean;
+  rulesCount: number;
+  totalRequests: number;
+  blockedRequests: number;
+  totalDetections: number;
+  blockRate: number;
+}
+
+export interface PaginatedResponse<T> {
+  success: boolean;
+  data: {
+    logs: T[];
+    pagination: {
+      total: number;
+      page: number;
+      limit: number;
+      totalPages: number;
+    };
+  };
+  message: string;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data: T;
+  message: string;
+}
+
+export interface ApiError {
+  success: false;
+  message: string;
+  errors?: string[];
+}
