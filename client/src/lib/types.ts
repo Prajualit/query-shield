@@ -35,12 +35,25 @@ export interface Firewall {
     rules: number;
     auditLogs: number;
   };
+  targetUrl?: string;
+  rateLimit?: number;
+  sqlInjectionProtection?: boolean;
+  xssProtection?: boolean;
+  pathTraversalProtection?: boolean;
+  aiValidation?: boolean;
+  enabled?: boolean;
+  stats?: {
+    totalRequests: number;
+    threatsBlocked: number;
+    successRate: number;
+    avgResponseTime: number;
+  };
 }
 
 export interface Rule {
   id: string;
   name: string;
-  type: RuleType;
+  type: RuleType | string;
   pattern: string;
   action: Action;
   priority: number;
@@ -48,6 +61,9 @@ export interface Rule {
   firewallId: string;
   createdAt: string;
   updatedAt: string;
+  severity?: 'low' | 'medium' | 'high' | 'critical';
+  enabled?: boolean;
+  detectionCount?: number;
 }
 
 export type RuleType =
@@ -98,6 +114,8 @@ export interface ApiKey {
   lastUsed: string | null;
   createdAt: string;
   apiKey?: string; // Only returned on creation
+  key: string; // The actual API key
+  expiresAt?: string;
 }
 
 export interface DashboardStats {

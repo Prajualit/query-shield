@@ -160,23 +160,22 @@ class ApiClient {
   }
 
   // Rules
-  async getRules(firewallId: string): Promise<ApiResponse<Rule[]>> {
-    const response = await this.client.get(`/firewalls/${firewallId}/rules`);
+  async getRules(firewallId?: string): Promise<ApiResponse<Rule[]>> {
+    const url = firewallId ? `/firewalls/${firewallId}/rules` : '/rules';
+    const response = await this.client.get(url);
     return response.data;
   }
 
   async createRule(
-    firewallId: string,
     data: {
       name: string;
       type: string;
       pattern: string;
-      action: string;
-      priority?: number;
-      isActive?: boolean;
+      severity?: string;
+      enabled?: boolean;
     }
   ): Promise<ApiResponse<Rule>> {
-    const response = await this.client.post(`/firewalls/${firewallId}/rules`, data);
+    const response = await this.client.post('/rules', data);
     return response.data;
   }
 
@@ -185,9 +184,7 @@ class ApiClient {
     data: {
       name?: string;
       pattern?: string;
-      action?: string;
-      priority?: number;
-      isActive?: boolean;
+      enabled?: boolean;
     }
   ): Promise<ApiResponse<Rule>> {
     const response = await this.client.put(`/rules/${id}`, data);
@@ -286,6 +283,50 @@ class ApiClient {
 
   async deleteApiKey(id: string): Promise<ApiResponse<null>> {
     const response = await this.client.delete(`/api-keys/${id}`);
+    return response.data;
+  }
+
+  // Settings
+  async updateProfile(data: {
+    name?: string;
+    email?: string;
+    currentPassword?: string;
+    newPassword?: string;
+  }): Promise<ApiResponse<User>> {
+    const response = await this.client.put('/auth/profile', data);
+    return response.data;
+  }
+
+  async updateFirewallDefaults(data: {
+    defaultRateLimit?: string;
+    defaultSqlInjectionProtection?: boolean;
+    defaultXssProtection?: boolean;
+    defaultPathTraversalProtection?: boolean;
+    defaultAiValidation?: boolean;
+  }): Promise<ApiResponse<unknown>> {
+    const response = await this.client.put('/settings/firewall-defaults', data);
+    return response.data;
+  }
+
+  async updateNotificationSettings(data: {
+    emailAlerts?: boolean;
+    threatDetections?: boolean;
+    systemUpdates?: boolean;
+    weeklyReports?: boolean;
+    criticalOnly?: boolean;
+  }): Promise<ApiResponse<unknown>> {
+    const response = await this.client.put('/settings/notifications', data);
+    return response.data;
+  }
+
+  // Real-time Monitoring
+  async getRealtimeMonitoring(): Promise<ApiResponse<{
+    requestsPerSecond: number;
+    threatsDetected: number;
+    requestsBlocked: number;
+    activeConnections: number;
+  }>> {
+    const response = await this.client.get('/monitoring/realtime');
     return response.data;
   }
 }
