@@ -340,3 +340,83 @@ export const getProxyStats = asyncHandler(async (req: Request, res: Response) =>
     new ApiResponse(200, stats, 'Proxy statistics retrieved successfully')
   );
 });
+
+/**
+ * Validate text for sensitive data (for browser extension)
+ * POST /api/v1/proxy/validate
+ */
+export const validateText = asyncHandler(async (req: Request, res: Response) => {
+  const authReq = req as AuthRequest;
+  const userId = authReq.user?.id;
+
+  if (!userId) {
+    throw new ApiError(401, 'Authentication required');
+  }
+
+  const { firewallId, text } = req.body;
+
+  if (!firewallId) {
+    throw new ApiError(400, 'Firewall ID is required');
+  }
+
+  if (!text || typeof text !== 'string') {
+    throw new ApiError(400, 'Text is required');
+  }
+
+  // Verify firewall exists and user has access
+  const firewall = await prisma.firewall.findFirst({
+    where: {
+      id: firewallId,
+      userId,
+    },
+    include: {
+      rules: true,
+    },
+  });
+
+  if (!firewall) {
+    throw new ApiError(404, 'Firewall not found or access denied');
+  }
+
+  if (!firewall.isActive) {
+    throw new ApiError(400, 'Firewall is not active');
+  }
+
+  // Use rules engine to evaluate the text
+  const { rulesEngine } = await import('../services/detection/rules.engine');
+  const result = await rulesEngine.evaluateRules(text, firewallId, userId);
+
+  // Check if blocked
+  const blocked = result.blocked;
+  const sanitized = result.sanitizedText !== result.originalText;
+
+  // Create audit log
+  await prisma.auditLog.create({
+    data: {
+      userId,
+      firewallId,
+      inputText: text,
+      sanitizedText: result.sanitizedText,
+      detectedIssues: JSON.parse(JSON.stringify(result.detectedItems)),
+      action: blocked ? 'BLOCKED' : sanitized ? 'SANITIZED' : 'ALLOWED',
+      aiProvider: 'BROWSER_EXTENSION',
+    },
+  });
+
+  // Return validation result
+  const response = {
+    blocked: blocked,
+    sanitized: sanitized,
+    detections: result.detectedItems.map((d: any) => ({
+      type: d.type,
+      value: d.value,
+      confidence: d.confidence,
+      description: d.description,
+    })),
+    sanitizedText: result.sanitizedText,
+  };
+
+  res.status(200).json(
+    new ApiResponse(200, response, 'Text validation completed')
+  );
+});

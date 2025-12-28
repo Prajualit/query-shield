@@ -49,6 +49,18 @@ router.post('/openai', proxyOpenAI);
 router.post('/anthropic', proxyAnthropic);
 
 /**
+ * @route   POST /api/v1/proxy/validate
+ * @desc    Validate text for sensitive data without sending to AI
+ * @access  Private
+ * @body    { firewallId: string, text: string }
+ */
+router.post('/validate', (req, res) => {
+  import('../controllers/proxy.controller').then(({ validateText }) => {
+    return validateText(req, res, () => {});
+  });
+});
+
+/**
  * @route   POST /api/v1/proxy/openai/test
  * @desc    Test OpenAI API connection
  * @access  Private
