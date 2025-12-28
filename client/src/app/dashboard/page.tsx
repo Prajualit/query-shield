@@ -1,27 +1,45 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import { api } from '@/lib/api';
-import { StatsCard } from '@/components/dashboard/StatsCard';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Activity, AlertTriangle, CheckCircle, TrendingUp } from 'lucide-react';
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
+import { StatsCard } from "@/components/dashboard/StatsCard";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import {
+  Shield,
+  Activity,
+  AlertTriangle,
+  CheckCircle,
+  TrendingUp,
+} from "lucide-react";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+} from "recharts";
+import Link from "next/link";
 
-const COLORS = ['#ef4444', '#f59e0b', '#10b981'];
+const COLORS = ["#ef4444", "#f59e0b", "#10b981"];
 
 export default function DashboardPage() {
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['dashboard-stats'],
+    queryKey: ["dashboard-stats"],
     queryFn: () => api.getDashboardStats(),
   });
 
   const { data: timeline, isLoading: timelineLoading } = useQuery({
-    queryKey: ['timeline'],
+    queryKey: ["timeline"],
     queryFn: () => api.getTimeline({ days: 7 }),
   });
 
   const { data: patterns, isLoading: patternsLoading } = useQuery({
-    queryKey: ['patterns'],
+    queryKey: ["patterns"],
     queryFn: () => api.getTopPatterns({ limit: 5 }),
   });
 
@@ -29,8 +47,10 @@ export default function DashboardPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading dashboard...</p>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-amber-500 border-t-transparent mx-auto shadow-lg"></div>
+          <p className="mt-4 text-neutral-600 dark:text-neutral-400 font-medium">
+            Loading dashboard...
+          </p>
         </div>
       </div>
     );
@@ -42,17 +62,21 @@ export default function DashboardPage() {
 
   // Prepare pie chart data
   const pieData = [
-    { name: 'Blocked', value: dashboardStats?.requests.blocked || 0 },
-    { name: 'Sanitized', value: dashboardStats?.requests.sanitized || 0 },
-    { name: 'Allowed', value: dashboardStats?.requests.allowed || 0 },
+    { name: "Blocked", value: dashboardStats?.requests.blocked || 0 },
+    { name: "Sanitized", value: dashboardStats?.requests.sanitized || 0 },
+    { name: "Allowed", value: dashboardStats?.requests.allowed || 0 },
   ];
 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div>
-        <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
-        <p className="mt-2 text-gray-600">Monitor your AI data firewall performance</p>
+      <div className="pb-2">
+        <h1 className="text-4xl font-bold text-neutral-900 dark:text-neutral-50">
+          Dashboard
+        </h1>
+        <p className="mt-3 text-neutral-700 dark:text-neutral-300 text-lg font-medium">
+          Monitor your AI data firewall performance
+        </p>
       </div>
 
       {/* Stats Grid */}
@@ -61,7 +85,9 @@ export default function DashboardPage() {
           title="Active Firewalls"
           value={dashboardStats?.overview.activeFirewalls || 0}
           icon={Shield}
-          description={`${dashboardStats?.overview.totalFirewalls || 0} total firewalls`}
+          description={`${
+            dashboardStats?.overview.totalFirewalls || 0
+          } total firewalls`}
         />
         <StatsCard
           title="Total Requests"
@@ -88,17 +114,21 @@ export default function DashboardPage() {
       {/* Charts Row */}
       <div className="grid gap-6 md:grid-cols-2">
         {/* Timeline Chart */}
-        <Card>
+        <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-lg">
           <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5" />
+            <CardTitle className="flex items-center gap-2 text-neutral-900 dark:text-neutral-50">
+              <div className="p-2 rounded-lg bg-linear-to-br from-amber-100 to-yellow-100 dark:from-amber-900/50 dark:to-yellow-900/50">
+                <TrendingUp className="h-5 w-5 text-amber-700 dark:text-amber-400" />
+              </div>
               Request Timeline (Last 7 Days)
             </CardTitle>
           </CardHeader>
           <CardContent>
             {timelineLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="text-gray-500">Loading chart...</div>
+                <div className="text-neutral-700 dark:text-neutral-300 font-medium">
+                  Loading chart...
+                </div>
               </div>
             ) : timelineData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
@@ -107,13 +137,28 @@ export default function DashboardPage() {
                   <XAxis dataKey="date" />
                   <YAxis />
                   <Tooltip />
-                  <Line type="monotone" dataKey="blocked" stroke="#ef4444" name="Blocked" />
-                  <Line type="monotone" dataKey="sanitized" stroke="#f59e0b" name="Sanitized" />
-                  <Line type="monotone" dataKey="allowed" stroke="#10b981" name="Allowed" />
+                  <Line
+                    type="monotone"
+                    dataKey="blocked"
+                    stroke="#ef4444"
+                    name="Blocked"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="sanitized"
+                    stroke="#f59e0b"
+                    name="Sanitized"
+                  />
+                  <Line
+                    type="monotone"
+                    dataKey="allowed"
+                    stroke="#10b981"
+                    name="Allowed"
+                  />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
-              <div className="h-64 flex items-center justify-center text-gray-500">
+              <div className="h-64 flex items-center justify-center text-neutral-600 dark:text-neutral-400 font-medium">
                 No data available
               </div>
             )}
@@ -121,14 +166,18 @@ export default function DashboardPage() {
         </Card>
 
         {/* Request Distribution */}
-        <Card>
+        <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-lg">
           <CardHeader>
-            <CardTitle>Request Distribution</CardTitle>
+            <CardTitle className="text-neutral-900 dark:text-neutral-50">
+              Request Distribution
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {statsLoading ? (
               <div className="h-64 flex items-center justify-center">
-                <div className="text-gray-500">Loading chart...</div>
+                <div className="text-neutral-700 dark:text-neutral-300 font-medium">
+                  Loading chart...
+                </div>
               </div>
             ) : (
               <ResponsiveContainer width="100%" height={300}>
@@ -138,13 +187,18 @@ export default function DashboardPage() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
+                    label={({ name, percent }) =>
+                      `${name} ${((percent || 0) * 100).toFixed(0)}%`
+                    }
                     outerRadius={80}
                     fill="#8884d8"
                     dataKey="value"
                   >
                     {pieData.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell
+                        key={`cell-${index}`}
+                        fill={COLORS[index % COLORS.length]}
+                      />
                     ))}
                   </Pie>
                   <Tooltip />
@@ -156,70 +210,94 @@ export default function DashboardPage() {
       </div>
 
       {/* Top Patterns */}
-      <Card>
+      <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-lg">
         <CardHeader>
-          <CardTitle>Top Detected Patterns</CardTitle>
+          <CardTitle className="text-neutral-900 dark:text-neutral-50">
+            Top Detected Patterns
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {patternsLoading ? (
-            <div className="text-gray-500">Loading patterns...</div>
+            <div className="text-neutral-700 dark:text-neutral-300 font-medium">
+              Loading patterns...
+            </div>
           ) : patternsData.length > 0 ? (
             <div className="space-y-3">
               {patternsData.map((pattern, index) => (
                 <div key={index} className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
-                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-sm font-medium text-blue-600">
+                    <div className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-100 dark:bg-amber-900/50 text-sm font-medium text-amber-700 dark:text-amber-400">
                       {index + 1}
                     </div>
-                    <span className="font-medium text-gray-900">{pattern.type}</span>
+                    <span className="font-medium text-neutral-900 dark:text-neutral-50">
+                      {pattern.type}
+                    </span>
                   </div>
-                  <span className="text-sm text-gray-500">{pattern.count} detections</span>
+                  <span className="text-sm text-neutral-600 dark:text-neutral-400 font-medium">
+                    {pattern.count} detections
+                  </span>
                 </div>
               ))}
             </div>
           ) : (
-            <div className="text-gray-500">No patterns detected yet</div>
+            <div className="text-neutral-600 dark:text-neutral-400 font-medium">
+              No patterns detected yet
+            </div>
           )}
         </CardContent>
       </Card>
 
       {/* Quick Actions */}
-      <Card>
+      <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-lg">
         <CardHeader>
-          <CardTitle>Quick Actions</CardTitle>
+          <CardTitle className="text-neutral-900 dark:text-neutral-50">
+            Quick Actions
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-3">
-            <a
+            <Link
               href="/dashboard/firewalls/new"
-              className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-blue-500 hover:bg-blue-50"
+              className="flex items-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 p-4 transition-colors hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
             >
-              <Shield className="h-8 w-8 text-blue-600" />
+              <Shield className="h-8 w-8 text-amber-600 dark:text-amber-500" />
               <div>
-                <p className="font-medium text-gray-900">Create Firewall</p>
-                <p className="text-sm text-gray-500">Set up a new firewall</p>
+                <p className="font-medium text-neutral-900 dark:text-neutral-50">
+                  Create Firewall
+                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  Set up a new firewall
+                </p>
               </div>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/audit-logs"
-              className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-blue-500 hover:bg-blue-50"
+              className="flex items-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 p-4 transition-colors hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
             >
-              <Activity className="h-8 w-8 text-blue-600" />
+              <Activity className="h-8 w-8 text-amber-600 dark:text-amber-500" />
               <div>
-                <p className="font-medium text-gray-900">View Logs</p>
-                <p className="text-sm text-gray-500">Check audit logs</p>
+                <p className="font-medium text-neutral-900 dark:text-neutral-50">
+                  View Logs
+                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  Check audit logs
+                </p>
               </div>
-            </a>
-            <a
+            </Link>
+            <Link
               href="/dashboard/api-keys"
-              className="flex items-center gap-3 rounded-lg border border-gray-200 p-4 transition-colors hover:border-blue-500 hover:bg-blue-50"
+              className="flex items-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 p-4 transition-colors hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
             >
-              <CheckCircle className="h-8 w-8 text-blue-600" />
+              <CheckCircle className="h-8 w-8 text-amber-600 dark:text-amber-500" />
               <div>
-                <p className="font-medium text-gray-900">API Keys</p>
-                <p className="text-sm text-gray-500">Manage your keys</p>
+                <p className="font-medium text-neutral-900 dark:text-neutral-50">
+                  API Keys
+                </p>
+                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                  Manage your keys
+                </p>
               </div>
-            </a>
+            </Link>
           </div>
         </CardContent>
       </Card>

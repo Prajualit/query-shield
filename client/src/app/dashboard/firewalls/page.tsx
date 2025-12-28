@@ -1,28 +1,34 @@
-'use client';
+"use client";
 
-import { useQuery } from '@tanstack/react-query';
-import Link from 'next/link';
-import { api } from '@/lib/api';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Shield, Plus, Settings, Trash2 } from 'lucide-react';
-import type { Firewall } from '@/lib/types';
+import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
+import { api } from "@/lib/api";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { Shield, Plus, Settings, Trash2 } from "lucide-react";
+import type { Firewall } from "@/lib/types";
 
 export default function FirewallsPage() {
   const { data, isLoading, refetch } = useQuery({
-    queryKey: ['firewalls'],
+    queryKey: ["firewalls"],
     queryFn: () => api.getFirewalls(),
   });
 
   const firewalls = data?.data || [];
 
   const handleDelete = async (id: string) => {
-    if (confirm('Are you sure you want to delete this firewall?')) {
+    if (confirm("Are you sure you want to delete this firewall?")) {
       try {
         await api.deleteFirewall(id);
         refetch();
       } catch (error) {
-        console.error('Failed to delete firewall:', error);
+        console.error("Failed to delete firewall:", error);
       }
     }
   };
@@ -31,8 +37,10 @@ export default function FirewallsPage() {
     return (
       <div className="flex items-center justify-center h-full">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading firewalls...</p>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-amber-500 border-t-transparent mx-auto shadow-lg"></div>
+          <p className="mt-4 text-neutral-600 dark:text-neutral-400 font-medium">
+            Loading firewalls...
+          </p>
         </div>
       </div>
     );
@@ -43,11 +51,15 @@ export default function FirewallsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Firewalls</h1>
-          <p className="mt-2 text-gray-600">Manage your AI data firewalls</p>
+          <h1 className="text-4xl font-bold text-neutral-900 dark:text-neutral-50">
+            Firewalls
+          </h1>
+          <p className="mt-3 text-neutral-700 dark:text-neutral-300 text-lg font-medium">
+            Manage your AI data firewalls
+          </p>
         </div>
         <Link href="/dashboard/firewalls/new">
-          <Button>
+          <Button className="bg-linear-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-semibold shadow-lg shadow-amber-500/30">
             <Plus className="mr-2 h-4 w-4" />
             Create Firewall
           </Button>
@@ -56,13 +68,19 @@ export default function FirewallsPage() {
 
       {/* Firewalls Grid */}
       {firewalls.length === 0 ? (
-        <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12">
-            <Shield className="h-16 w-16 text-gray-300 mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No firewalls yet</h3>
-            <p className="text-gray-500 mb-4">Get started by creating your first firewall</p>
+        <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-lg">
+          <CardContent className="flex flex-col items-center justify-center py-16">
+            <div className="p-4 rounded-2xl bg-linear-to-br from-amber-100 to-yellow-100 dark:from-amber-900/50 dark:to-yellow-900/50 mb-6">
+              <Shield className="h-16 w-16 text-amber-700 dark:text-amber-400" />
+            </div>
+            <h3 className="text-xl font-bold text-neutral-900 dark:text-neutral-50 mb-2">
+              No firewalls yet
+            </h3>
+            <p className="text-neutral-700 dark:text-neutral-300 mb-6 font-medium">
+              Get started by creating your first firewall
+            </p>
             <Link href="/dashboard/firewalls/new">
-              <Button>
+              <Button className="bg-linear-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-semibold shadow-lg shadow-amber-500/30">
                 <Plus className="mr-2 h-4 w-4" />
                 Create Firewall
               </Button>
@@ -72,45 +90,73 @@ export default function FirewallsPage() {
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
           {firewalls.map((firewall: Firewall) => (
-            <Card key={firewall.id} className="relative">
+            <Card
+              key={firewall.id}
+              className="relative bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-lg hover:shadow-xl transition-all duration-200"
+            >
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
-                    <div className={`flex h-10 w-10 items-center justify-center rounded-lg ${
-                      firewall.isActive ? 'bg-green-100' : 'bg-gray-100'
-                    }`}>
-                      <Shield className={`h-5 w-5 ${
-                        firewall.isActive ? 'text-green-600' : 'text-gray-400'
-                      }`} />
+                    <div
+                      className={`flex h-12 w-12 items-center justify-center rounded-xl shadow-md ${
+                        firewall.isActive
+                          ? "bg-linear-to-br from-green-400 to-emerald-600 shadow-green-500/30"
+                          : "bg-linear-to-br from-neutral-300 to-neutral-400 dark:from-neutral-600 dark:to-neutral-700"
+                      }`}
+                    >
+                      <Shield
+                        className={`h-6 w-6 ${
+                          firewall.isActive
+                            ? "text-white"
+                            : "text-neutral-700 dark:text-neutral-300"
+                        }`}
+                      />
                     </div>
                     <div>
-                      <CardTitle className="text-lg">{firewall.name}</CardTitle>
-                      <span className={`text-xs px-2 py-1 rounded-full ${
-                        firewall.isActive
-                          ? 'bg-green-100 text-green-700'
-                          : 'bg-gray-100 text-gray-700'
-                      }`}>
-                        {firewall.isActive ? 'Active' : 'Inactive'}
+                      <CardTitle className="text-lg text-neutral-900 dark:text-neutral-50">
+                        {firewall.name}
+                      </CardTitle>
+                      <span
+                        className={`text-xs px-3 py-1 rounded-full font-semibold ${
+                          firewall.isActive
+                            ? "bg-green-100 text-green-800 dark:bg-green-900/50 dark:text-green-300"
+                            : "bg-neutral-200 text-neutral-800 dark:bg-neutral-700 dark:text-neutral-300"
+                        }`}
+                      >
+                        {firewall.isActive ? "Active" : "Inactive"}
                       </span>
                     </div>
                   </div>
                 </div>
                 {firewall.description && (
-                  <CardDescription className="mt-2">{firewall.description}</CardDescription>
+                  <CardDescription className="mt-3 text-neutral-700 dark:text-neutral-300">
+                    {firewall.description}
+                  </CardDescription>
                 )}
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Rules</span>
-                    <span className="font-medium">{firewall._count?.rules || 0}</span>
+                    <span className="text-neutral-600 dark:text-neutral-400 font-medium">
+                      Rules
+                    </span>
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                      {firewall._count?.rules || 0}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">Audit Logs</span>
-                    <span className="font-medium">{firewall._count?.auditLogs || 0}</span>
+                    <span className="text-neutral-600 dark:text-neutral-400 font-medium">
+                      Audit Logs
+                    </span>
+                    <span className="font-semibold text-neutral-900 dark:text-neutral-100">
+                      {firewall._count?.auditLogs || 0}
+                    </span>
                   </div>
                   <div className="flex gap-2 pt-3">
-                    <Link href={`/dashboard/firewalls/${firewall.id}`} className="flex-1">
+                    <Link
+                      href={`/dashboard/firewalls/${firewall.id}`}
+                      className="flex-1"
+                    >
                       <Button variant="outline" className="w-full" size="sm">
                         <Settings className="mr-2 h-4 w-4" />
                         Manage

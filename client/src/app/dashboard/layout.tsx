@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAppSelector } from '@/store/hooks';
 import { Sidebar } from '@/components/dashboard/Sidebar';
 import { Navbar } from '@/components/dashboard/Navbar';
 
@@ -11,7 +11,7 @@ export default function DashboardLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const { user, loading } = useAuth();
+  const { user, loading } = useAppSelector((state) => state.auth);
   const router = useRouter();
 
   useEffect(() => {
@@ -22,10 +22,10 @@ export default function DashboardLayout({
 
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center">
+      <div className="flex h-screen items-center justify-center bg-neutral-50 dark:bg-neutral-900">
         <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto"></div>
-          <p className="mt-4 text-gray-600">Loading...</p>
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-amber-500 border-t-transparent mx-auto shadow-lg"></div>
+          <p className="mt-4 text-neutral-800 dark:text-neutral-200 font-medium">Loading...</p>
         </div>
       </div>
     );
@@ -36,7 +36,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden bg-neutral-50 dark:bg-neutral-900">
       {/* Sidebar */}
       <Sidebar />
 

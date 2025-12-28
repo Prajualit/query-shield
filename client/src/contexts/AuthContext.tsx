@@ -32,18 +32,29 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (isAuthenticated()) {
         const storedUser = getStoredUser();
         if (storedUser) {
+          // Immediately set user from localStorage to prevent logout flicker
           setUser(storedUser);
-          // Optionally verify token is still valid
+          
+          // Then verify token is still valid in the background
           try {
             const response = await api.getCurrentUser();
-            if (response.success) {
+            if (response.success && response.data?.user) {
+              // Update with fresh user data from server
               setUser(response.data.user);
+              // Update localStorage with latest user data
+              if (typeof window !== 'undefined') {
+                localStorage.setItem('user', JSON.stringify(response.data.user));
+              }
             }
-          } catch {
-            // Token invalid, clear auth
+          } catch (error) {
+            // Token invalid or network error
+            console.error('Auth verification failed:', error);
             clearAuth();
             setUser(null);
           }
+        } else {
+          // No stored user but has token - invalid state, clear everything
+          clearAuth();
         }
       }
       setLoading(false);
