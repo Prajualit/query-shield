@@ -1,0 +1,347 @@
+/* QueryShield Overlay Styles - Injected into AI chatbot pages */
+
+.queryshield-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 999999;
+  animation: fadeIn 0.2s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.queryshield-modal {
+  background: #1a1a1a;
+  border: 2px solid #fbbf24;
+  border-radius: 16px;
+  padding: 32px;
+  max-width: 480px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(251, 191, 36, 0.3);
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.queryshield-modal-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.queryshield-icon {
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.queryshield-icon svg {
+  width: 28px;
+  height: 28px;
+  color: #1a1a1a;
+}
+
+.queryshield-title {
+  font-size: 24px;
+  font-weight: 700;
+  color: #f5f5f5;
+  margin: 0;
+}
+
+.queryshield-subtitle {
+  font-size: 14px;
+  color: #a3a3a3;
+  margin: 0;
+}
+
+.queryshield-content {
+  margin: 24px 0;
+}
+
+.queryshield-alert {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.queryshield-alert-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #ef4444;
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 15px;
+}
+
+.queryshield-alert-icon {
+  width: 20px;
+  height: 20px;
+}
+
+.queryshield-alert-message {
+  color: #fca5a5;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.queryshield-detections {
+  background: #262626;
+  border: 1px solid #404040;
+  border-radius: 8px;
+  padding: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.queryshield-detections-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d4d4d4;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.queryshield-detection-item {
+  display: flex;
+  align-items: start;
+  gap: 12px;
+  padding: 10px;
+  background: #1a1a1a;
+  border: 1px solid #404040;
+  border-radius: 6px;
+  margin-bottom: 8px;
+}
+
+.queryshield-detection-item:last-child {
+  margin-bottom: 0;
+}
+
+.queryshield-detection-icon {
+  width: 16px;
+  height: 16px;
+  color: #fbbf24;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.queryshield-detection-content {
+  flex: 1;
+}
+
+.queryshield-detection-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: #fbbf24;
+  margin-bottom: 4px;
+}
+
+.queryshield-detection-value {
+  font-size: 12px;
+  color: #a3a3a3;
+  font-family: 'Courier New', monospace;
+  background: #0a0a0a;
+  padding: 4px 8px;
+  border-radius: 4px;
+  word-break: break-all;
+}
+
+.queryshield-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 24px;
+}
+
+.queryshield-btn {
+  flex: 1;
+  padding: 12px 24px;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.queryshield-btn-primary {
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1a1a1a;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.3);
+}
+
+.queryshield-btn-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(251, 191, 36, 0.4);
+}
+
+.queryshield-btn-secondary {
+  background: #262626;
+  color: #f5f5f5;
+  border: 1px solid #404040;
+}
+
+.queryshield-btn-secondary:hover {
+  background: #2a2a2a;
+  border-color: #525252;
+}
+
+.queryshield-btn-danger {
+  background: rgba(239, 68, 68, 0.1);
+  color: #ef4444;
+  border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.queryshield-btn-danger:hover {
+  background: rgba(239, 68, 68, 0.2);
+  border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* Inline Warning Badge */
+.queryshield-input-warning {
+  position: relative;
+}
+
+.queryshield-badge {
+  position: absolute;
+  top: -12px;
+  right: 12px;
+  background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+  color: #1a1a1a;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 4px 12px rgba(251, 191, 36, 0.4);
+  animation: bounce 2s infinite;
+  z-index: 1000;
+}
+
+@keyframes bounce {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+}
+
+.queryshield-badge-icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Notification Toast */
+.queryshield-toast {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: #1a1a1a;
+  border: 2px solid #fbbf24;
+  border-radius: 12px;
+  padding: 16px 20px;
+  min-width: 300px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.5);
+  z-index: 999998;
+  animation: slideInRight 0.3s ease-out;
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+.queryshield-toast-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.queryshield-toast-icon {
+  width: 24px;
+  height: 24px;
+  color: #fbbf24;
+  flex-shrink: 0;
+}
+
+.queryshield-toast-message {
+  flex: 1;
+  color: #f5f5f5;
+  font-size: 14px;
+  font-weight: 500;
+}
+
+.queryshield-toast-close {
+  background: none;
+  border: none;
+  color: #737373;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.queryshield-toast-close:hover {
+  background: #262626;
+  color: #f5f5f5;
+}
+
+.queryshield-toast-close svg {
+  width: 16px;
+  height: 16px;
+}
+
+/* Scrollbar Styling */
+.queryshield-detections::-webkit-scrollbar {
+  width: 6px;
+}
+
+.queryshield-detections::-webkit-scrollbar-track {
+  background: #1a1a1a;
+  border-radius: 3px;
+}
+
+.queryshield-detections::-webkit-scrollbar-thumb {
+  background: #404040;
+  border-radius: 3px;
+}
+
+.queryshield-detections::-webkit-scrollbar-thumb:hover {
+  background: #525252;
+}

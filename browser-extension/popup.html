@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>QueryShield</title>
+  <link rel="stylesheet" href="styles/popup.css">
+</head>
+<body>
+  <!-- Header -->
+  <div class="header">
+    <div class="logo">
+      <svg width="32" height="32" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <path d="M12 22C12 22 20 18 20 12V5L12 2L4 5V12C4 18 12 22 12 22Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      <span class="logo-text">QueryShield</span>
+    </div>
+    <div class="status-indicator" id="statusIndicator">
+      <span class="status-dot"></span>
+      <span class="status-text">Active</span>
+    </div>
+  </div>
+
+  <!-- Not Logged In View -->
+  <div id="loginView" class="view hidden">
+    <div class="login-card">
+      <h2>Welcome Back</h2>
+      <p class="subtitle">Sign in to protect your data</p>
+      
+      <form id="loginForm" class="form">
+        <div class="form-group">
+          <label for="email">Email</label>
+          <input type="email" id="email" placeholder="you@example.com" required>
+        </div>
+        
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="••••••••" required>
+        </div>
+
+        <div id="errorMessage" class="error-message hidden"></div>
+        
+        <button type="submit" class="btn btn-primary" id="loginButton">
+          <span>Sign In</span>
+        </button>
+      </form>
+
+      <div class="divider">
+        <span>OR</span>
+      </div>
+
+      <button class="btn btn-secondary" id="openDashboard">
+        Open QueryShield Dashboard
+      </button>
+    </div>
+  </div>
+
+  <!-- Logged In View -->
+  <div id="mainView" class="view hidden">
+    <!-- Protection Toggle -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Protection Status</h3>
+        <label class="toggle">
+          <input type="checkbox" id="protectionToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+      <p class="card-description">
+        QueryShield is actively scanning your AI conversations
+      </p>
+    </div>
+
+    <!-- Firewall Selection -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Active Firewall</h3>
+      </div>
+      <select id="firewallSelect" class="select">
+        <option value="">Loading firewalls...</option>
+      </select>
+      <button id="refreshFirewalls" class="btn btn-text">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M21.5 2V8M21.5 8H16M21.5 8L18 4.5C16.5 3 14.5 2 12 2C6.5 2 2 6.5 2 12C2 17.5 6.5 22 12 22C17 22 21 18.5 21.5 14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Refresh
+      </button>
+    </div>
+
+    <!-- Settings -->
+    <div class="card">
+      <div class="card-header">
+        <h3>Settings</h3>
+      </div>
+      
+      <div class="setting-item">
+        <div class="setting-info">
+          <span class="setting-label">Auto-block sensitive data</span>
+          <span class="setting-description">Automatically prevent sending</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="autoBlockToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-item">
+        <div class="setting-info">
+          <span class="setting-label">Show notifications</span>
+          <span class="setting-description">Alert when data is blocked</span>
+        </div>
+        <label class="toggle">
+          <input type="checkbox" id="notificationToggle" checked>
+          <span class="toggle-slider"></span>
+        </label>
+      </div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-value" id="blockedCount">0</div>
+        <div class="stat-label">Blocked Today</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-value" id="scannedCount">0</div>
+        <div class="stat-label">Scanned</div>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div class="footer-actions">
+      <button id="openDashboardMain" class="btn btn-secondary">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M10 13C10 13 8.5 14.5 8.5 16.5C8.5 17.328 9.172 18 10 18C10.828 18 11.5 17.328 11.5 16.5C11.5 14.5 10 13 10 13Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M12 2L2 7V12C2 17 12 22 12 22C12 22 22 17 22 12V7L12 2Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Dashboard
+      </button>
+      <button id="logoutButton" class="btn btn-text logout-btn">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M9 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M16 17L21 12L16 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          <path d="M21 12H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Logout
+      </button>
+    </div>
+  </div>
+
+  <!-- Loading View -->
+  <div id="loadingView" class="view">
+    <div class="loading-spinner"></div>
+    <p>Loading QueryShield...</p>
+  </div>
+
+  <script src="popup.js" type="module"></script>
+</body>
+</html>
