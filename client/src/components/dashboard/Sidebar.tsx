@@ -54,7 +54,8 @@ export function Sidebar() {
     item: { name: string; href: string; icon: React.ElementType };
   }) => {
     const isActive =
-      pathname === item.href || pathname.startsWith(item.href + "/");
+      pathname === item.href || 
+      (pathname.startsWith(item.href + "/") && item.href !== "/dashboard");
     return (
       <Link
         href={item.href}
