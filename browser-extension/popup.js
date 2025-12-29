@@ -1,7 +1,26 @@
-import { CONFIG } from './config.js';
+// QueryShield API Configuration
+const CONFIG = {
+  API_BASE_URL: 'http://localhost:5000/api',
+  ENDPOINTS: {
+    LOGIN: '/auth/login',
+    FIREWALLS: '/firewalls',
+    VALIDATE: '/proxy/validate',
+  },
+  DEFAULT_SETTINGS: {
+    enabled: true,
+    autoBlock: true,
+    showNotifications: true,
+    selectedFirewallId: null,
+  },
+  STORAGE_KEYS: {
+    ACCESS_TOKEN: 'queryshield_token',
+    SETTINGS: 'queryshield_settings',
+    FIREWALL_ID: 'queryshield_firewall_id',
+  },
+};
 
 // DOM Elements
-let currentView = 'loading';
+let currentView = 'login';
 
 // Initialize popup
 document.addEventListener('DOMContentLoaded', async () => {
@@ -32,7 +51,6 @@ function showView(viewName) {
   document.querySelectorAll('.view').forEach(view => view.classList.add('hidden'));
   
   const viewMap = {
-    loading: 'loadingView',
     login: 'loginView',
     main: 'mainView',
   };
@@ -44,20 +62,26 @@ function showView(viewName) {
 }
 
 async function loadMainView() {
-  showView('main');
-  
-  // Load settings
-  const settings = await loadSettings();
-  updateUIFromSettings(settings);
-  
-  // Load firewalls
-  await loadFirewalls();
-  
-  // Load stats
-  await loadStats();
-  
-  // Update status
-  updateProtectionStatus(settings.enabled);
+  try {
+    showView('main');
+    
+    // Load settings
+    const settings = await loadSettings();
+    updateUIFromSettings(settings);
+    
+    // Load firewalls
+    await loadFirewalls();
+    
+    // Load stats
+    await loadStats();
+    
+    // Update status
+    updateProtectionStatus(settings.enabled);
+  } catch (error) {
+    console.error('Error loading main view:', error);
+    // Still show main view even if some parts fail
+    showView('main');
+  }
 }
 
 async function loadSettings() {
@@ -81,14 +105,21 @@ async function saveSettings(settings) {
 }
 
 function updateUIFromSettings(settings) {
-  document.getElementById('protectionToggle').checked = settings.enabled;
-  document.getElementById('autoBlockToggle').checked = settings.autoBlock;
-  document.getElementById('notificationToggle').checked = settings.showNotifications;
+  const protectionToggle = document.getElementById('protectionToggle');
+  const autoBlockToggle = document.getElementById('autoBlockToggle');
+  const notificationToggle = document.getElementById('notificationToggle');
+  
+  if (protectionToggle) protectionToggle.checked = settings.enabled;
+  if (autoBlockToggle) autoBlockToggle.checked = settings.autoBlock;
+  if (notificationToggle) notificationToggle.checked = settings.showNotifications;
 }
 
 function updateProtectionStatus(enabled) {
   const indicator = document.getElementById('statusIndicator');
+  if (!indicator) return;
+  
   const statusText = indicator.querySelector('.status-text');
+  if (!statusText) return;
   
   if (enabled) {
     indicator.classList.remove('inactive');
