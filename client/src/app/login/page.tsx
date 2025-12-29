@@ -5,9 +5,8 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import Link from "next/link";
-import { useRouter } from 'next/navigation';
-import { useAppDispatch, useAppSelector } from '@/store/hooks';
-import { loginUser } from '@/store/authSlice';
+import { useAppDispatch, useAppSelector } from "@/store/hooks";
+import { loginUser } from "@/store/authSlice";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,7 +30,6 @@ type LoginFormData = z.infer<typeof loginSchema>;
 export default function LoginPage() {
   const [error, setError] = useState("");
   const dispatch = useAppDispatch();
-  const router = useRouter();
   const { loading } = useAppSelector((state) => state.auth);
 
   const {
@@ -45,9 +43,14 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginFormData) => {
     try {
       setError("");
-      await dispatch(loginUser({ email: data.email, password: data.password })).unwrap();
-      router.push('/dashboard');
+      const result = await dispatch(
+        loginUser({ email: data.email, password: data.password })
+      ).unwrap();
+      console.log("Login successful:", result);
+      // Use window.location for more reliable navigation
+      window.location.href = "/dashboard";
     } catch (err: unknown) {
+      console.error("Login error:", err);
       const error = err as string;
       setError(error || "Login failed");
     }
