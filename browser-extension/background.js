@@ -122,25 +122,3 @@ chrome.runtime.onInstalled.addListener((details) => {
     }
   });
 });
-
-// Handle extension icon click
-chrome.action.onClicked.addListener((tab) => {
-  // Open popup (default behavior, this is just a fallback)
-  chrome.action.openPopup();
-});
-
-// Periodic cleanup of old data (optional)
-chrome.alarms.create('cleanup', { periodInMinutes: 60 });
-
-chrome.alarms.onAlarm.addListener((alarm) => {
-  if (alarm.name === 'cleanup') {
-    // Reset daily stats at midnight
-    const now = new Date();
-    if (now.getHours() === 0) {
-      chrome.storage.local.set({
-        blockedCount: 0,
-        scannedCount: 0,
-      });
-    }
-  }
-});
