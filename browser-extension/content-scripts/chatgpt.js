@@ -3,6 +3,18 @@ console.log('QueryShield: ChatGPT interceptor loaded');
 
 let settings = null;
 let isProcessing = false;
+let allowNextSend = false; // Flag to allow the next send through without interception
+let extensionContextValid = true; // Track if extension context is still valid
+
+// Check if extension context is still valid
+function isExtensionContextValid() {
+  try {
+    // This will throw if context is invalidated
+    return chrome.runtime && chrome.runtime.id;
+  } catch (e) {
+    return false;
+  }
+}
 
 // Load settings
 chrome.storage.local.get(['queryshield_settings'], (result) => {
@@ -45,11 +57,22 @@ function attachInterceptor(inputElement) {
   if (sendButton) {
     // Intercept send button click
     sendButton.addEventListener('click', async (e) => {
-      if (!settings?.enabled || isProcessing) return;
+      // Check if extension context is still valid
+      if (!isExtensionContextValid()) {
+        extensionContextValid = false;
+        return; // Let the event through normally
+      }
+      
+      // If extension disabled, allow next send flag is set, or we're sending programmatically, let it through
+      if (!settings?.enabled || allowNextSend || isProcessing) {
+        allowNextSend = false; // Reset the flag
+        return;
+      }
       
       const text = getInputText(inputElement);
       if (!text || text.trim().length === 0) return;
       
+      // Prevent the original send
       e.preventDefault();
       e.stopPropagation();
       e.stopImmediatePropagation();
@@ -59,12 +82,23 @@ function attachInterceptor(inputElement) {
     
     // Also intercept Enter key
     inputElement.addEventListener('keydown', async (e) => {
-      if (!settings?.enabled || isProcessing) return;
+      // Check if extension context is still valid
+      if (!isExtensionContextValid()) {
+        extensionContextValid = false;
+        return; // Let the event through normally
+      }
+      
+      // If extension disabled, allow next send flag is set, or we're sending programmatically, let it through
+      if (!settings?.enabled || allowNextSend || isProcessing) {
+        allowNextSend = false; // Reset the flag
+        return;
+      }
       
       if (e.key === 'Enter' && !e.shiftKey) {
         const text = getInputText(inputElement);
         if (!text || text.trim().length === 0) return;
         
+        // Prevent the original send
         e.preventDefault();
         e.stopPropagation();
         e.stopImmediatePropagation();
@@ -126,19 +160,33 @@ async function handleMessageSend(text, inputElement, sendButton) {
   isProcessing = true;
   
   try {
-    showInputBadge(inputElement, 'Scanning...');
-    
     // Send to background script for validation
-    const response = await chrome.runtime.sendMessage({
-      type: 'VALIDATE_TEXT',
-      text: text,
-    });
+    let response;
+    try {
+      response = await chrome.runtime.sendMessage({
+        type: 'VALIDATE_TEXT',
+        text: text,
+      });
+    } catch (contextError) {
+      // Extension context invalidated or other communication errors
+      // Allow the message through since we can't validate it
+      console.warn('QueryShield: Cannot validate message - extension error. Allowing message through.', contextError);
+      if (settings?.showNotifications) {
+        showToast('⚠️ Extension error - message sent without validation', 'warning');
+      }
+      clickOriginalButton(sendButton, inputElement);
+      return;
+    }
     
-    hideInputBadge(inputElement);
+    console.log('QueryShield: Validation response:', response);
     
-    if (!response.success) {
-      showToast('Error scanning message. Proceeding without protection.', 'error');
-      clickOriginalButton(sendButton);
+    // Handle case where response is undefined or invalid
+    if (!response || !response.success) {
+      console.warn('QueryShield: Invalid response from background script. Allowing message through.');
+      if (settings?.showNotifications) {
+        showToast('⚠️ Validation error - message sent without validation', 'warning');
+      }
+      clickOriginalButton(sendButton, inputElement);
       return;
     }
     
@@ -148,56 +196,72 @@ async function handleMessageSend(text, inputElement, sendButton) {
     if (response.data.blocked) {
       // Show blocking modal
       await updateStats('blocked');
+      isProcessing = false;
       showBlockModal(response.data.detections, text, inputElement, sendButton);
     } else if (response.data.sanitized) {
       // Show sanitization modal
+      isProcessing = false;
       showSanitizeModal(response.data.sanitizedText, response.data.detections, inputElement, sendButton);
     } else {
-      // Safe to send
-      clickOriginalButton(sendButton);
+      // Safe to send - allow through immediately
+      // Don't reset isProcessing yet, clickOriginalButton will handle it
+      clickOriginalButton(sendButton, inputElement);
     }
   } catch (error) {
-    console.error('QueryShield: Error validating message:', error);
-    showToast('Protection error. Message not sent.', 'error');
-  } finally {
-    isProcessing = false;
+    console.error('QueryShield: Unexpected error validating message:', error);
+    if (settings?.showNotifications) {
+      showToast('⚠️ Unexpected error - message sent without validation', 'warning');
+    }
+    // Allow the message through on unexpected errors
+    clickOriginalButton(sendButton, inputElement);
   }
 }
 
 function showBlockModal(detections, originalText, inputElement, sendButton) {
+  const actions = [
+    {
+      label: 'Edit Message',
+      type: 'primary',
+      action: () => {
+        removeModal();
+        isProcessing = false;
+        allowNextSend = false;
+        inputElement.focus();
+      }
+    }
+  ];
+  
+  // Only show "Send Anyway" if autoBlock is disabled
+  if (!settings?.autoBlock) {
+    actions.push({
+      label: 'Send Anyway',
+      type: 'danger',
+      action: () => {
+        removeModal();
+        if (settings.showNotifications) {
+          showToast('⚠️ Sent without protection', 'warning');
+        }
+        clickOriginalButton(sendButton, inputElement);
+      }
+    });
+  }
+  
+  actions.push({
+    label: 'Cancel',
+    type: 'secondary',
+    action: () => {
+      removeModal();
+      isProcessing = false;
+      allowNextSend = false;
+    }
+  });
+  
   const modal = createModal({
     title: 'Sensitive Data Detected',
-    subtitle: 'QueryShield blocked this message',
+    subtitle: settings?.autoBlock ? 'QueryShield blocked this message' : 'QueryShield detected sensitive data',
     type: 'block',
     detections: detections,
-    actions: [
-      {
-        label: 'Edit Message',
-        type: 'primary',
-        action: () => {
-          removeModal();
-          inputElement.focus();
-        }
-      },
-      {
-        label: 'Send Anyway',
-        type: 'danger',
-        action: () => {
-          removeModal();
-          if (settings.showNotifications) {
-            showToast('⚠️ Sent without protection', 'warning');
-          }
-          clickOriginalButton(sendButton);
-        }
-      },
-      {
-        label: 'Cancel',
-        type: 'secondary',
-        action: () => {
-          removeModal();
-        }
-      }
-    ]
+    actions: actions
   });
   
   document.body.appendChild(modal);
@@ -216,7 +280,8 @@ function showSanitizeModal(sanitizedText, detections, inputElement, sendButton) 
         action: () => {
           removeModal();
           setInputText(inputElement, sanitizedText);
-          setTimeout(() => clickOriginalButton(sendButton), 100);
+          // Wait for input to be updated, then send
+          setTimeout(() => clickOriginalButton(sendButton, inputElement), 100);
         }
       },
       {
@@ -224,6 +289,8 @@ function showSanitizeModal(sanitizedText, detections, inputElement, sendButton) 
         type: 'secondary',
         action: () => {
           removeModal();
+          isProcessing = false;
+          allowNextSend = false;
           inputElement.focus();
         }
       }
@@ -370,16 +437,83 @@ function showToast(message, type = 'info') {
   }, 3000);
 }
 
-function clickOriginalButton(button) {
-  // Remove our interceptor temporarily
+function clickOriginalButton(button, inputElement) {
+  // Set flag to allow the next send through our interceptor
+  allowNextSend = true;
   isProcessing = true;
   
-  // Trigger the original click
-  button.click();
-  
+  // Small delay to ensure flags are set
   setTimeout(() => {
-    isProcessing = false;
-  }, 1000);
+    // Try multiple methods to trigger the send
+    
+    // Method 1: Click the send button directly
+    if (button) {
+      button.click();
+    }
+    
+    // Method 2: If button click didn't work, try triggering Enter key
+    // with proper event properties that ChatGPT expects
+    setTimeout(() => {
+      // Check if the input still has content (meaning send didn't work)
+      const currentText = getInputText(inputElement);
+      if (currentText && currentText.trim().length > 0) {
+        // Button click didn't work, try Enter key approach
+        allowNextSend = true; // Reset flag for retry
+        
+        // Focus the input first
+        inputElement.focus();
+        
+        // Create and dispatch Enter key events
+        const keydownEvent = new KeyboardEvent('keydown', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        });
+        
+        const keypressEvent = new KeyboardEvent('keypress', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        });
+        
+        const keyupEvent = new KeyboardEvent('keyup', {
+          key: 'Enter',
+          code: 'Enter',
+          keyCode: 13,
+          which: 13,
+          bubbles: true,
+          cancelable: true,
+          composed: true
+        });
+        
+        inputElement.dispatchEvent(keydownEvent);
+        inputElement.dispatchEvent(keypressEvent);
+        inputElement.dispatchEvent(keyupEvent);
+        
+        // Also try clicking the button again after key events
+        setTimeout(() => {
+          if (button) {
+            allowNextSend = true;
+            button.click();
+          }
+        }, 50);
+      }
+      
+      // Reset flags after send should have completed
+      setTimeout(() => {
+        isProcessing = false;
+        allowNextSend = false;
+      }, 500);
+    }, 100);
+  }, 10);
 }
 
 async function updateStats(type) {
@@ -414,7 +548,7 @@ function observeInputChanges(inputElement) {
     // Re-attach if input element is replaced
     if (!document.contains(inputElement)) {
       observer.disconnect();
-      setTimeout(initializeInterceptor, 1000);
+      setTimeout(initializeInterceptor, 0);
     }
   });
   
@@ -427,10 +561,10 @@ function observeInputChanges(inputElement) {
 // Initialize
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
-    setTimeout(initializeInterceptor, 1000);
+    setTimeout(initializeInterceptor, 0);
   });
 } else {
-  setTimeout(initializeInterceptor, 1000);
+  setTimeout(initializeInterceptor, 0);
 }
 
 // Retry initialization periodically (ChatGPT is a SPA)
