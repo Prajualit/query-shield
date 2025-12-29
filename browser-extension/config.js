@@ -1,5 +1,5 @@
 // QueryShield API Configuration
-export const CONFIG = {
+const CONFIG = {
   API_BASE_URL: 'http://localhost:5000/api',
   ENDPOINTS: {
     LOGIN: '/auth/login',
