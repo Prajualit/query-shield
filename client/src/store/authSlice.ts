@@ -4,12 +4,16 @@ import type { User } from '@/lib/types';
 
 interface AuthState {
   user: User | null;
+  accessToken: string | null;
+  refreshToken: string | null;
   loading: boolean;
   error: string | null;
 }
 
 const initialState: AuthState = {
   user: null,
+  accessToken: null,
+  refreshToken: null,
   loading: false,
   error: null,
 };
@@ -21,7 +25,14 @@ export const loginUser = createAsyncThunk(
     try {
       const response = await api.login(email, password);
       if (response.success && response.data) {
-        return response.data.user;
+        // Store tokens in localStorage for API calls
+        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+        return {
+          user: response.data.user,
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken,
+        };
       }
       throw new Error('Login failed');
     } catch (error: unknown) {
@@ -37,7 +48,14 @@ export const registerUser = createAsyncThunk(
     try {
       const response = await api.register(email, password, name);
       if (response.success && response.data) {
-        return response.data.user;
+        // Store tokens in localStorage for API calls
+        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+        return {
+          user: response.data.user,
+          accessToken: response.data.accessToken,
+          refreshToken: response.data.refreshToken,
+        };
       }
       throw new Error('Registration failed');
     } catch (error: unknown) {
@@ -73,7 +91,11 @@ const authSlice = createSlice({
     },
     logout: (state) => {
       state.user = null;
+      state.accessToken = null;
+      state.refreshToken = null;
       state.error = null;
+      localStorage.removeItem('accessToken');
+      localStorage.removeItem('refreshToken');
       api.logout();
     },
     clearError: (state) => {
@@ -89,7 +111,9 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
         state.error = null;
       })
       .addCase(loginUser.rejected, (state, action) => {
@@ -105,7 +129,9 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.loading = false;
-        state.user = action.payload;
+        state.user = action.payload.user;
+        state.accessToken = action.payload.accessToken;
+        state.refreshToken = action.payload.refreshToken;
         state.error = null;
       })
       .addCase(registerUser.rejected, (state, action) => {
