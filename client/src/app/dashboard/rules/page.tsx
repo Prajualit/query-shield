@@ -58,8 +58,8 @@ export default function RulesPage() {
   });
 
   const toggleMutation = useMutation({
-    mutationFn: ({ id, enabled }: { id: string; enabled: boolean }) =>
-      api.updateRule(id, { enabled }),
+    mutationFn: ({ id, isActive }: { id: string; isActive: boolean }) =>
+      api.updateRule(id, { enabled: isActive }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rules'] });
     },
@@ -357,11 +357,11 @@ export default function RulesPage() {
                           </span>
                         )}
                         <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          rule.enabled
+                          rule.isActive
                             ? 'bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300'
                             : 'bg-neutral-100 dark:bg-neutral-700 text-neutral-700 dark:text-neutral-300'
                         }`}>
-                          {rule.enabled ? 'ACTIVE' : 'DISABLED'}
+                          {rule.isActive ? 'ACTIVE' : 'DISABLED'}
                         </span>
                       </div>
                       <CardDescription className="text-neutral-600 dark:text-neutral-400">
@@ -373,9 +373,10 @@ export default function RulesPage() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => toggleMutation.mutate({ id: rule.id, enabled: !rule.enabled })}
+                      onClick={() => toggleMutation.mutate({ id: rule.id, isActive: !rule.isActive })}
+                      className="hover:bg-amber-50 dark:hover:bg-amber-900/20 hover:border-amber-500 dark:hover:border-amber-600 transition-all"
                     >
-                      {rule.enabled ? 'Disable' : 'Enable'}
+                      {rule.isActive ? 'Disable' : 'Enable'}
                     </Button>
                     <Button
                       variant="ghost"
