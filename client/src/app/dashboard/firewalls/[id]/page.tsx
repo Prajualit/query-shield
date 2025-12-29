@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, use } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
@@ -10,14 +10,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Shield, Save, Trash2, ArrowLeft, CheckCircle, Activity } from 'lucide-react';
 
-export default function FirewallDetailPage({ params }: { params: { id: string } }) {
+export default function FirewallDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const queryClient = useQueryClient();
   const [saveSuccess, setSaveSuccess] = useState(false);
+  
+  // Unwrap params using React.use()
+  const { id } = use(params);
 
   const { data, isLoading } = useQuery({
-    queryKey: ['firewall', params.id],
-    queryFn: () => api.getFirewall(params.id),
+    queryKey: ['firewall', id],
+    queryFn: () => api.getFirewall(id),
   });
 
   const firewall = data?.data;
@@ -50,9 +53,9 @@ export default function FirewallDetailPage({ params }: { params: { id: string } 
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: Record<string, string | number | boolean>) => api.updateFirewall(params.id, data),
+    mutationFn: (data: Record<string, string | number | boolean>) => api.updateFirewall(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['firewall', params.id] });
+      queryClient.invalidateQueries({ queryKey: ['firewall', id] });
       queryClient.invalidateQueries({ queryKey: ['firewalls'] });
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
@@ -60,7 +63,7 @@ export default function FirewallDetailPage({ params }: { params: { id: string } 
   });
 
   const deleteMutation = useMutation({
-    mutationFn: () => api.deleteFirewall(params.id),
+    mutationFn: () => api.deleteFirewall(id),
     onSuccess: () => {
       router.push('/dashboard/firewalls');
     },
@@ -313,6 +316,68 @@ export default function FirewallDetailPage({ params }: { params: { id: string } 
               onClick={() => router.push('/dashboard/firewalls')}
             >
               Cancel
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Rules Management */}
+      <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-lg">
+        <CardHeader>
+          <CardTitle className="text-neutral-900 dark:text-neutral-50">Detection Rules</CardTitle>
+          <CardDescription className="text-neutral-600 dark:text-neutral-400">
+            Manage what types of sensitive data this firewall detects
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {firewall.rules && firewall.rules.length > 0 ? (
+            <div className="space-y-3">
+              {firewall.rules.map((rule: { id: string; name: string; type: string; action: string; priority: number; isActive: boolean }) => (
+                <div
+                  key={rule.id}
+                  className="flex items-center justify-between p-4 rounded-lg border border-neutral-200 dark:border-neutral-700 hover:bg-neutral-50 dark:hover:bg-neutral-900/50"
+                >
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium text-neutral-900 dark:text-neutral-100">
+                        {rule.name}
+                      </span>
+                      <span className={`px-2 py-0.5 text-xs rounded-full ${
+                        rule.action === 'BLOCK' 
+                          ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                          : rule.action === 'REDACT'
+                          ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                          : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400'
+                      }`}>
+                        {rule.action}
+                      </span>
+                      {rule.isActive && (
+                        <span className="px-2 py-0.5 text-xs rounded-full bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400">
+                          Active
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-sm text-neutral-600 dark:text-neutral-400 mt-1">
+                      Type: {rule.type} • Priority: {rule.priority}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-8 text-neutral-600 dark:text-neutral-400">
+              <p>No rules configured yet.</p>
+              <p className="text-sm mt-2">Rules are created automatically based on your protection settings.</p>
+            </div>
+          )}
+          
+          <div className="mt-6 pt-6 border-t border-neutral-200 dark:border-neutral-700">
+            <Button
+              variant="outline"
+              onClick={() => router.push(`/dashboard/rules?firewallId=${id}`)}
+              className="w-full"
+            >
+              Manage Rules
             </Button>
           </div>
         </CardContent>
