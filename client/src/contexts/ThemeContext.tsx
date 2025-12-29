@@ -14,7 +14,7 @@ const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('light');
-  const [mounted, setMounted] = useState(false);
+  const [, setMounted] = useState(false);
 
   const applyTheme = useCallback((newTheme: Theme) => {
     const root = document.documentElement;
@@ -65,11 +65,6 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       window.removeEventListener('storage', handleStorageChange);
     };
   }, [applyTheme]);
-
-  // Prevent flash of unstyled content
-  if (!mounted) {
-    return <>{children}</>;
-  }
 
   return (
     <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
