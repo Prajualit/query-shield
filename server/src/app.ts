@@ -15,6 +15,7 @@ app.use(express.json());
 
 app.use('/api/auth', authRoutes);
 app.use('/api/firewalls', firewallRoutes);
+app.use('/api/rules', ruleRoutes);
 app.use('/api/firewalls/:firewallId/rules', ruleRoutes);
 app.use('/api/proxy', proxyRoutes);
 app.use('/api/audit-logs', auditRoutes);
