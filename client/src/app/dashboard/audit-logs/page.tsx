@@ -2,21 +2,33 @@
 
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { useAppSelector } from "@/store/hooks";
 import { api } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Search, Download } from "lucide-react";
+import { Search, Download, Eye } from "lucide-react";
 import type { AuditLog } from "@/lib/types";
 
 export default function AuditLogsPage() {
+  const { user } = useAppSelector((state) => state.auth);
   const [page, setPage] = useState(1);
   const [search, setSearch] = useState("");
   const [action, setAction] = useState("");
 
+  const isOrgAccount = user?.accountType === "ORGANIZATION";
+  const isAdmin = user?.orgRole === "ADMIN";
+  const organizationId = typeof window !== "undefined" ? localStorage.getItem("currentOrgId") : null;
+
   const { data, isLoading } = useQuery({
-    queryKey: ["audit-logs", page, search, action],
-    queryFn: () => api.getAuditLogs({ page, limit: 20, search, action }),
+    queryKey: ["audit-logs", page, search, action, organizationId],
+    queryFn: () => api.getAuditLogs({ 
+      page, 
+      limit: 20, 
+      search, 
+      action,
+      // Backend handles visibility based on user role
+    }),
   });
 
   const logs = data?.data?.logs || [];
@@ -60,16 +72,30 @@ export default function AuditLogsPage() {
             Audit Logs
           </h1>
           <p className="mt-3 text-neutral-700 dark:text-neutral-300 text-lg font-medium">
-            View all firewall activity
+            {isOrgAccount && isAdmin 
+              ? "View all organization firewall activity" 
+              : isOrgAccount 
+                ? "View your firewall activity"
+                : "View all firewall activity"}
           </p>
         </div>
-        <Button
-          onClick={handleExport}
-          className="bg-linear-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-semibold shadow-lg shadow-amber-500/30"
-        >
-          <Download className="mr-2 h-4 w-4" />
-          Export CSV
-        </Button>
+        <div className="flex items-center gap-3">
+          {isOrgAccount && (
+            <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <Eye className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+              <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+                {isAdmin ? "Viewing all team activity" : "Viewing your activity only"}
+              </span>
+            </div>
+          )}
+          <Button
+            onClick={handleExport}
+            className="bg-linear-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white font-semibold shadow-lg shadow-amber-500/30"
+          >
+            <Download className="mr-2 h-4 w-4" />
+            Export CSV
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}

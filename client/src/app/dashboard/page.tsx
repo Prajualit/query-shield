@@ -2,6 +2,7 @@
 
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
+import { useAppSelector } from "@/store/hooks";
 import { StatsCard } from "@/components/dashboard/StatsCard";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -10,6 +11,9 @@ import {
   AlertTriangle,
   CheckCircle,
   TrendingUp,
+  Building2,
+  Users,
+  Crown,
 } from "lucide-react";
 import {
   LineChart,
@@ -28,6 +32,11 @@ import Link from "next/link";
 const COLORS = ["#ef4444", "#f59e0b", "#10b981"];
 
 export default function DashboardPage() {
+  const { user } = useAppSelector((state) => state.auth);
+  // Check org membership by organizationId, not accountType
+  const isOrgMember = !!user?.organizationId;
+  const isAdmin = user?.orgRole === "ADMIN";
+
   const { data: stats, isLoading: statsLoading } = useQuery({
     queryKey: ["dashboard-stats"],
     queryFn: () => api.getDashboardStats(),
@@ -76,8 +85,53 @@ export default function DashboardPage() {
         </h1>
         <p className="mt-3 text-neutral-700 dark:text-neutral-300 text-lg font-medium">
           Monitor your AI data firewall performance
+          {isOrgMember && (
+            <span className="ml-2 inline-flex items-center gap-1 text-amber-600 dark:text-amber-400">
+              <Building2 className="h-4 w-4" />
+              Organization Account
+            </span>
+          )}
         </p>
       </div>
+
+      {/* Organization Role Banner (for org users) */}
+      {isOrgMember && (
+        <Card className="bg-linear-to-r from-amber-50 via-yellow-50 to-amber-50 dark:from-amber-900/20 dark:via-yellow-900/20 dark:to-amber-900/20 border-amber-200 dark:border-amber-800 shadow-lg">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                {isAdmin ? (
+                  <div className="h-10 w-10 rounded-full bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
+                    <Crown className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  </div>
+                ) : (
+                  <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-semibold text-neutral-900 dark:text-neutral-100">
+                    {isAdmin ? "Administrator Access" : "Member Access"}
+                  </p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    {isAdmin 
+                      ? "You can view all organization activity and manage teams" 
+                      : "You can view your personal activity"}
+                  </p>
+                </div>
+              </div>
+              {isAdmin && (
+                <Link
+                  href="/dashboard/organization"
+                  className="px-4 py-2 bg-amber-500 hover:bg-amber-600 text-white font-medium rounded-lg shadow-md shadow-amber-500/30 transition-colors"
+                >
+                  Manage Organization
+                </Link>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Stats Grid */}
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
@@ -280,24 +334,41 @@ export default function DashboardPage() {
                   View Logs
                 </p>
                 <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  Check audit logs
+                  {isOrgMember && isAdmin ? "View all team activity" : "Check audit logs"}
                 </p>
               </div>
             </Link>
-            <Link
-              href="/dashboard/api-keys"
-              className="flex items-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 p-4 transition-colors hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
-            >
-              <CheckCircle className="h-8 w-8 text-amber-600 dark:text-amber-500" />
-              <div>
-                <p className="font-medium text-neutral-900 dark:text-neutral-50">
-                  API Keys
-                </p>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
-                  Manage your keys
-                </p>
-              </div>
-            </Link>
+            {isOrgMember && isAdmin ? (
+              <Link
+                href="/dashboard/teams"
+                className="flex items-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 p-4 transition-colors hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+              >
+                <Users className="h-8 w-8 text-amber-600 dark:text-amber-500" />
+                <div>
+                  <p className="font-medium text-neutral-900 dark:text-neutral-50">
+                    Manage Teams
+                  </p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Create and manage teams
+                  </p>
+                </div>
+              </Link>
+            ) : (
+              <Link
+                href="/dashboard/api-keys"
+                className="flex items-center gap-3 rounded-lg border border-neutral-300 dark:border-neutral-600 bg-neutral-50 dark:bg-neutral-900 p-4 transition-colors hover:border-amber-500 hover:bg-amber-50 dark:hover:bg-amber-900/20"
+              >
+                <CheckCircle className="h-8 w-8 text-amber-600 dark:text-amber-500" />
+                <div>
+                  <p className="font-medium text-neutral-900 dark:text-neutral-50">
+                    API Keys
+                  </p>
+                  <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                    Manage your keys
+                  </p>
+                </div>
+              </Link>
+            )}
           </div>
         </CardContent>
       </Card>
