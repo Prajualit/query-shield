@@ -28,6 +28,13 @@ export const loginUser = createAsyncThunk(
         // Store tokens in localStorage for API calls
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(response.data.user));
+        
+        // Store organization ID if user belongs to an organization
+        if (response.data.user.organizationId) {
+          localStorage.setItem('currentOrgId', response.data.user.organizationId);
+        }
+        
         return {
           user: response.data.user,
           accessToken: response.data.accessToken,
@@ -44,13 +51,29 @@ export const loginUser = createAsyncThunk(
 
 export const registerUser = createAsyncThunk(
   'auth/register',
-  async ({ email, password, name }: { email: string; password: string; name?: string }, { rejectWithValue }) => {
+  async ({ 
+    email, 
+    password, 
+    name,
+    accountType,
+    organizationName 
+  }: { 
+    email: string; 
+    password: string; 
+    name?: string;
+    accountType?: 'INDIVIDUAL' | 'ORGANIZATION';
+    organizationName?: string;
+  }, { rejectWithValue }) => {
     try {
-      const response = await api.register(email, password, name);
+      const response = await api.register(email, password, name, accountType, organizationName);
       if (response.success && response.data) {
         // Store tokens in localStorage for API calls
         localStorage.setItem('accessToken', response.data.accessToken);
         localStorage.setItem('refreshToken', response.data.refreshToken);
+        // Store organization context if applicable
+        if (response.data.user.organizationId) {
+          localStorage.setItem('currentOrgId', response.data.user.organizationId);
+        }
         return {
           user: response.data.user,
           accessToken: response.data.accessToken,
@@ -96,6 +119,8 @@ const authSlice = createSlice({
       state.error = null;
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
+      localStorage.removeItem('user');
+      localStorage.removeItem('currentOrgId');
       api.logout();
     },
     clearError: (state) => {
