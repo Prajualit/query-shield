@@ -7,9 +7,30 @@ export interface User {
   email: string;
   name: string | null;
   role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  accountType?: 'INDIVIDUAL' | 'ORGANIZATION';
+  organizationId?: string;
+  orgRole?: 'ADMIN' | 'MEMBER';
   isActive: boolean;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface Invitation {
+  id: string;
+  email: string;
+  token: string;
+  role: 'ADMIN' | 'MEMBER';
+  status: 'PENDING' | 'ACCEPTED' | 'EXPIRED' | 'CANCELLED';
+  organizationId: string;
+  organization?: {
+    id: string;
+    name: string;
+  };
+  inviter?: {
+    name: string;
+  };
+  createdAt: string;
+  expiresAt: string;
 }
 
 export interface AuthResponse {
@@ -182,4 +203,51 @@ export interface ApiError {
   success: false;
   message: string;
   errors?: string[];
+}
+
+export interface TeamMember {
+  id: string;
+  name: string;
+  email: string;
+  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  isActive: boolean;
+  lastActive: string | null;
+  createdAt: string;
+}
+
+export interface TeamInvite {
+  id: string;
+  email: string;
+  role: 'USER' | 'ADMIN';
+  expiresAt: string;
+  createdAt: string;
+  inviter?: {
+    name: string;
+    email: string;
+  };
+}
+
+export interface Notification {
+  id: string;
+  userId: string;
+  type: 'THREAT' | 'SECURITY' | 'TEAM' | 'BILLING' | 'SYSTEM';
+  title: string;
+  message: string;
+  severity: 'CRITICAL' | 'WARNING' | 'INFO';
+  read: boolean;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface NotificationPreference {
+  id: string;
+  userId: string;
+  category: string;
+  name: string;
+  description: string;
+  email: boolean;
+  push: boolean;
+  slack: boolean;
+  createdAt: string;
+  updatedAt: string;
 }

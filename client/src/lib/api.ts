@@ -17,6 +17,10 @@ import type {
   Pattern,
   FirewallPerformance,
   PaginatedResponse,
+  TeamMember,
+  TeamInvite,
+  Notification,
+  NotificationPreference,
 } from './types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api';
@@ -81,11 +85,19 @@ class ApiClient {
   }
 
   // Authentication
-  async register(email: string, password: string, name?: string): Promise<AuthResponse> {
+  async register(
+    email: string, 
+    password: string, 
+    name?: string,
+    accountType?: 'INDIVIDUAL' | 'ORGANIZATION',
+    organizationName?: string
+  ): Promise<AuthResponse> {
     const response = await this.client.post<AuthResponse>('/auth/register', {
       email,
       password,
       name,
+      accountType,
+      organizationName,
     });
     if (response.data.data) {
       this.setToken(response.data.data.accessToken);
@@ -327,6 +339,224 @@ class ApiClient {
     activeConnections: number;
   }>> {
     const response = await this.client.get('/monitoring/realtime');
+    return response.data;
+  }
+
+  // Team Management (B2B Organization-based)
+  async getMyOrganizations(): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    uniqueId: string;
+    role: 'ADMIN' | 'MEMBER';
+  }>>> {
+    const response = await this.client.get('/organizations/my');
+    return response.data;
+  }
+
+  async getOrganization(id: string): Promise<ApiResponse<{
+    id: string;
+    name: string;
+    uniqueId: string;
+    createdAt: string;
+    _count: { members: number; teams: number };
+  }>> {
+    const response = await this.client.get(`/organizations/${id}`);
+    return response.data;
+  }
+
+  async getOrganizationMembers(orgId: string): Promise<ApiResponse<Array<{
+    id: string;
+    role: 'ADMIN' | 'MEMBER';
+    joinedAt: string;
+    user: { id: string; email: string; name: string; lastActive: string };
+  }>>> {
+    const response = await this.client.get(`/organizations/${orgId}/members`);
+    return response.data;
+  }
+
+  async inviteOrganizationMember(orgId: string, data: { email: string; role: 'ADMIN' | 'MEMBER' }): Promise<ApiResponse<{ id: string; email: string; token: string }>> {
+    const response = await this.client.post(`/organizations/${orgId}/members/invite`, data);
+    return response.data;
+  }
+
+  async removeOrganizationMember(orgId: string, memberId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/organizations/${orgId}/members/${memberId}`);
+    return response.data;
+  }
+
+  async updateOrganizationMemberRole(orgId: string, memberId: string, role: 'ADMIN' | 'MEMBER'): Promise<ApiResponse<unknown>> {
+    const response = await this.client.patch(`/organizations/${orgId}/members/${memberId}/role`, { role });
+    return response.data;
+  }
+
+  // Teams within Organization
+  async getOrganizationTeams(orgId: string): Promise<ApiResponse<Array<{
+    id: string;
+    name: string;
+    description: string;
+    _count: { members: number };
+  }>>> {
+    const response = await this.client.get(`/teams/organization/${orgId}`);
+    return response.data;
+  }
+
+  async createTeam(data: { name: string; description?: string; organizationId: string }): Promise<ApiResponse<{ id: string; name: string }>> {
+    const response = await this.client.post('/teams', data);
+    return response.data;
+  }
+
+  async deleteTeam(teamId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/teams/${teamId}`);
+    return response.data;
+  }
+
+  async addTeamMember(teamId: string, userId: string): Promise<ApiResponse<unknown>> {
+    const response = await this.client.post(`/teams/${teamId}/members`, { userId });
+    return response.data;
+  }
+
+  async removeTeamMember(teamId: string, userId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/teams/${teamId}/members/${userId}`);
+    return response.data;
+  }
+
+  // Invitations
+  async getOrganizationInvitations(orgId: string): Promise<ApiResponse<Array<{
+    id: string;
+    email: string;
+    role: 'ADMIN' | 'MEMBER';
+    status: string;
+    expiresAt: string;
+    createdAt: string;
+  }>>> {
+    const response = await this.client.get(`/invitations/organization/${orgId}`);
+    return response.data;
+  }
+
+  async cancelInvitation(invitationId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/invitations/${invitationId}`);
+    return response.data;
+  }
+
+  async resendInvitation(invitationId: string): Promise<ApiResponse<unknown>> {
+    const response = await this.client.post(`/invitations/${invitationId}/resend`);
+    return response.data;
+  }
+  async acceptInvitationByToken(token: string): Promise<ApiResponse<any>> {
+    const response = await this.client.post('/invitations/accept', { token });
+    return response.data;
+  }
+  async getInvitationByToken(token: string): Promise<ApiResponse<{
+    id: string;
+    email: string;
+    role: 'ADMIN' | 'MEMBER';
+    organization: { id: string; name: string };
+  }>> {
+    const response = await this.client.get(`/invitations/token/${token}`);
+    return response.data;
+  }
+
+  async acceptInvitation(token: string, data?: { password?: string; name?: string }): Promise<AuthResponse> {
+    const response = await this.client.post<AuthResponse>('/invitations/accept', { token, ...data });
+    if (response.data.data) {
+      this.setToken(response.data.data.accessToken);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('refreshToken', response.data.data.refreshToken);
+        localStorage.setItem('user', JSON.stringify(response.data.data.user));
+      }
+    }
+    return response.data;
+  }
+
+  // Legacy Team Management (for backwards compatibility)
+  async getTeamInfo(): Promise<ApiResponse<{ id: string; name: string; plan: string } | null>> {
+    const response = await this.client.get('/team');
+    return response.data;
+  }
+
+  async getTeamMembers(): Promise<ApiResponse<TeamMember[]>> {
+    const response = await this.client.get('/team/members');
+    return response.data;
+  }
+
+  async getPendingInvites(): Promise<ApiResponse<TeamInvite[]>> {
+    const response = await this.client.get('/team/invites');
+    return response.data;
+  }
+
+  async inviteTeamMember(data: { email: string; role: string }): Promise<ApiResponse<TeamInvite>> {
+    const response = await this.client.post('/team/invites', data);
+    return response.data;
+  }
+
+  async resendInvite(inviteId: string): Promise<ApiResponse<TeamInvite>> {
+    const response = await this.client.post(`/team/invites/${inviteId}/resend`);
+    return response.data;
+  }
+
+  async cancelInvite(inviteId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/team/invites/${inviteId}`);
+    return response.data;
+  }
+
+  async updateMemberRole(memberId: string, role: string): Promise<ApiResponse<TeamMember>> {
+    const response = await this.client.patch(`/team/members/${memberId}/role`, { role });
+    return response.data;
+  }
+
+  async removeMember(memberId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/team/members/${memberId}`);
+    return response.data;
+  }
+
+  // Notifications
+  async getNotifications(unreadOnly?: boolean): Promise<ApiResponse<Notification[]>> {
+    const response = await this.client.get('/notifications', {
+      params: { unreadOnly }
+    });
+    return response.data;
+  }
+
+  async getUnreadCount(): Promise<ApiResponse<{ count: number }>> {
+    const response = await this.client.get('/notifications/unread-count');
+    return response.data;
+  }
+
+  async markNotificationAsRead(notificationId: string): Promise<ApiResponse<Notification>> {
+    const response = await this.client.patch(`/notifications/${notificationId}/read`);
+    return response.data;
+  }
+
+  async markAllNotificationsAsRead(): Promise<ApiResponse<null>> {
+    const response = await this.client.patch('/notifications/mark-all-read');
+    return response.data;
+  }
+
+  async deleteNotification(notificationId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/notifications/${notificationId}`);
+    return response.data;
+  }
+
+  async clearAllNotifications(): Promise<ApiResponse<null>> {
+    const response = await this.client.delete('/notifications');
+    return response.data;
+  }
+
+  async getNotificationPreferences(): Promise<ApiResponse<NotificationPreference[]>> {
+    const response = await this.client.get('/notifications/preferences');
+    return response.data;
+  }
+
+  async updateNotificationPreference(
+    preferenceId: string, 
+    data: { email?: boolean; push?: boolean; slack?: boolean }
+  ): Promise<ApiResponse<NotificationPreference>> {
+    const response = await this.client.patch(`/notifications/preferences/${preferenceId}`, data);
+    return response.data;
+  }
+
+  async bulkUpdateNotificationPreferences(preferences: Partial<NotificationPreference>[]): Promise<ApiResponse<NotificationPreference[]>> {
+    const response = await this.client.patch('/notifications/preferences', { preferences });
     return response.data;
   }
 }
