@@ -6,7 +6,12 @@
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "nodemon --exec ts-node src/server.ts",
-    "seed": "ts-node prisma/seed.ts"
+    "devb": "nodemon --exec ts-node src/server.ts",
+    "seed": "ts-node prisma/seed.ts",
+    "migrate:b2b": "powershell -ExecutionPolicy Bypass -File ./scripts/migrate-b2b.ps1",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -15,8 +20,7 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "@prisma/adapter-pg": "^7.2.0",
-    "@prisma/client": "^7.2.0",
+    "@prisma/client": "^5.22.0",
     "axios": "^1.13.2",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
@@ -24,8 +28,7 @@
     "express": "^5.1.0",
     "express-validator": "^7.3.0",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
-    "prisma": "^7.2.0"
+    "prisma": "^5.22.0"
   },
   "devDependencies": {
     "@types/bcryptjs": "^3.0.0",
