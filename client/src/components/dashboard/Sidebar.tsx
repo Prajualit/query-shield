@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
+import { useAppSelector } from "@/store/hooks";
 import {
   Shield,
   LayoutDashboard,
@@ -19,34 +20,51 @@ import {
   Code,
   Webhook,
   FolderOpen,
+  Building2,
+  UserPlus,
 } from "lucide-react";
 
+// Navigation items with role restrictions
+// adminOnly: true means only org admins OR individual users can see it
 const navigation = [
-  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
-  { name: "Firewalls", href: "/dashboard/firewalls", icon: Shield },
-  { name: "Rules", href: "/dashboard/rules", icon: FileCode },
-  { name: "Playground", href: "/dashboard/playground", icon: PlayCircle },
-  { name: "Monitoring", href: "/dashboard/monitoring", icon: Activity },
-  { name: "Audit Logs", href: "/dashboard/audit-logs", icon: FileText },
-  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3 },
+  { name: "Dashboard", href: "/dashboard", icon: LayoutDashboard, adminOnly: false },
+  { name: "Firewalls", href: "/dashboard/firewalls", icon: Shield, adminOnly: true },
+  { name: "Rules", href: "/dashboard/rules", icon: FileCode, adminOnly: true },
+  { name: "Playground", href: "/dashboard/playground", icon: PlayCircle, adminOnly: true },
+  { name: "Monitoring", href: "/dashboard/monitoring", icon: Activity, adminOnly: false },
+  { name: "Audit Logs", href: "/dashboard/audit-logs", icon: FileText, adminOnly: false },
+  { name: "Analytics", href: "/dashboard/analytics", icon: BarChart3, adminOnly: false },
+];
+
+// Organization-specific navigation (only for org members)
+const organizationNavigation = [
+  { name: "Organization", href: "/dashboard/organization", icon: Building2, adminOnly: false },
+  { name: "Teams", href: "/dashboard/teams", icon: Users, adminOnly: false },
+  { name: "Invitations", href: "/dashboard/invitations", icon: UserPlus, adminOnly: true },
 ];
 
 const advancedNavigation = [
-  { name: "Team", href: "/dashboard/team", icon: Users },
-  { name: "Notifications", href: "/dashboard/notifications", icon: Bell },
-  { name: "Reports", href: "/dashboard/reports", icon: FileSpreadsheet },
-  { name: "Integrations", href: "/dashboard/integrations", icon: Code },
-  { name: "Webhooks", href: "/dashboard/webhooks", icon: Webhook },
-  { name: "Templates", href: "/dashboard/templates", icon: FolderOpen },
+  { name: "Notifications", href: "/dashboard/notifications", icon: Bell, adminOnly: false },
+  { name: "Reports", href: "/dashboard/reports", icon: FileSpreadsheet, adminOnly: false },
+  { name: "Integrations", href: "/dashboard/integrations", icon: Code, adminOnly: true },
+  { name: "Webhooks", href: "/dashboard/webhooks", icon: Webhook, adminOnly: true },
+  { name: "Templates", href: "/dashboard/templates", icon: FolderOpen, adminOnly: true },
 ];
 
 const settingsNavigation = [
-  { name: "API Keys", href: "/dashboard/api-keys", icon: Key },
-  { name: "Settings", href: "/dashboard/settings", icon: Settings },
+  { name: "API Keys", href: "/dashboard/api-keys", icon: Key, adminOnly: true },
+  { name: "Settings", href: "/dashboard/settings", icon: Settings, adminOnly: false },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const { user } = useAppSelector((state) => state.auth);
+  
+  // Check if user belongs to an organization
+  const isOrgMember = !!user?.organizationId;
+  const isAdmin = user?.orgRole === 'ADMIN';
+  // Individual users (no org) OR org admins can see admin-only items
+  const canSeeAdminItems = !isOrgMember || isAdmin;
 
   const NavLink = ({
     item,
@@ -91,19 +109,36 @@ export function Sidebar() {
           <p className="px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
             Main
           </p>
-          {navigation.map((item) => (
-            <NavLink key={item.name} item={item} />
-          ))}
+          {navigation.map((item) => {
+            // Hide admin-only items from org members who are not admins
+            if (item.adminOnly && !canSeeAdminItems) return null;
+            return <NavLink key={item.name} item={item} />;
+          })}
         </div>
+
+        {/* Organization Navigation (only for org members) */}
+        {isOrgMember && (
+          <div className="space-y-1">
+            <p className="px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
+              Organization
+            </p>
+            {organizationNavigation.map((item) => {
+              // Hide admin-only items from non-admins
+              if (item.adminOnly && !isAdmin) return null;
+              return <NavLink key={item.name} item={item} />;
+            })}
+          </div>
+        )}
 
         {/* Advanced Features */}
         <div className="space-y-1">
           <p className="px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
             Advanced
           </p>
-          {advancedNavigation.map((item) => (
-            <NavLink key={item.name} item={item} />
-          ))}
+          {advancedNavigation.map((item) => {
+            if (item.adminOnly && !canSeeAdminItems) return null;
+            return <NavLink key={item.name} item={item} />;
+          })}
         </div>
 
         {/* Settings */}
@@ -111,9 +146,10 @@ export function Sidebar() {
           <p className="px-4 text-xs font-semibold text-neutral-500 uppercase tracking-wider mb-2">
             Settings
           </p>
-          {settingsNavigation.map((item) => (
-            <NavLink key={item.name} item={item} />
-          ))}
+          {settingsNavigation.map((item) => {
+            if (item.adminOnly && !canSeeAdminItems) return null;
+            return <NavLink key={item.name} item={item} />;
+          })}
         </div>
       </nav>
 

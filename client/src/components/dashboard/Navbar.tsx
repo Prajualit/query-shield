@@ -5,7 +5,7 @@ import { logout } from '@/store/authSlice';
 import { useRouter } from 'next/navigation';
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Bell, Sun, Moon } from "lucide-react";
+import { LogOut, User, Bell, Sun, Moon, Building2, Crown, Shield } from "lucide-react";
 
 export function Navbar() {
   const user = useAppSelector((state) => state.auth.user);
@@ -14,9 +14,15 @@ export function Navbar() {
 
   const handleLogout = () => {
     dispatch(logout());
+    // Clear organization context
+    localStorage.removeItem('currentOrgId');
     router.push('/login');
   };
   const { theme, toggleTheme } = useTheme();
+  
+  // Check if user belongs to an organization (based on organizationId, not accountType)
+  const isOrgMember = !!user?.organizationId;
+  const isAdmin = user?.orgRole === 'ADMIN';
 
   return (
     <header className="flex h-16 items-center justify-between border-b border-neutral-200 dark:border-neutral-700 bg-white dark:bg-neutral-800 px-6 shadow-sm">
@@ -24,6 +30,19 @@ export function Navbar() {
         <h1 className="text-xl font-semibold text-neutral-900 dark:text-neutral-50">
           Welcome back, {user?.name || "User"}!
         </h1>
+        {isOrgMember && (
+          <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+            <Building2 className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
+              {isAdmin ? 'Admin' : 'Member'}
+            </span>
+            {isAdmin ? (
+              <Crown className="h-3 w-3 text-purple-500" />
+            ) : (
+              <Shield className="h-3 w-3 text-blue-500" />
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-4">
