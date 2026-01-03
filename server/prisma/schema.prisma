@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider      = "prisma-client-js"
   binaryTargets = ["native", "windows", "debian-openssl-3.0.x"]
@@ -11,73 +5,161 @@ generator client {
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 model User {
-  id        String     @id @default(uuid())
-  email     String     @unique
-  password  String
-  name      String?
-  role      Role       @default(USER)
-  isActive  Boolean    @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-  firewalls Firewall[]
-  auditLogs AuditLog[]
-  teamId    String?
-  team      Team?      @relation(fields: [teamId], references: [id])
-  apiKeys   ApiKey[]
+  id                      String                   @id @default(uuid())
+  email                   String                   @unique
+  password                String
+  createdAt               DateTime                 @default(now())
+  isActive                Boolean                  @default(true)
+  name                    String?
+  teamId                  String?
+  updatedAt               DateTime                 @updatedAt
+  lastActive              DateTime?
+  accountType             AccountType              @default(INDIVIDUAL)
+  apiKeys                 ApiKey[]
+  auditLogs               AuditLog[]
+  firewalls               Firewall[]
+  sentInvites             Invitation[]             @relation("InvitedBy")
+  notifications           Notification[]
+  notificationPreferences NotificationPreference[]
+  createdOrganizations    Organization[]           @relation("OrganizationCreator")
+  organizationMemberships OrganizationMember[]
+  sentTeamInvites         TeamInvite[]             @relation("InvitedBy")
+  teamMemberships         TeamMember[]
+  team                    Team?                    @relation(fields: [teamId], references: [id])
+}
+
+model Organization {
+  id          String               @id @default(uuid())
+  name        String
+  uniqueId    String               @unique
+  description String?
+  plan        Plan                 @default(FREE)
+  isActive    Boolean              @default(true)
+  createdBy   String
+  createdAt   DateTime             @default(now())
+  updatedAt   DateTime             @updatedAt
+  firewalls   Firewall[]           @relation("OrganizationFirewalls")
+  invitations Invitation[]
+  creator     User                 @relation("OrganizationCreator", fields: [createdBy], references: [id])
+  members     OrganizationMember[]
+  teams       Team[]
+
+  @@index([uniqueId])
+}
+
+model OrganizationMember {
+  id             String       @id @default(uuid())
+  userId         String
+  organizationId String
+  role           OrgRole      @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([organizationId])
+  @@index([userId])
 }
 
 model Team {
-  id        String   @id @default(uuid())
-  name      String
-  plan      Plan     @default(FREE)
-  members   User[]
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id             String       @id @default(uuid())
+  name           String
+  plan           Plan         @default(FREE)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  description    String?
+  isActive       Boolean      @default(true)
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  invites        TeamInvite[]
+  members        TeamMember[]
+  oldMembers     User[]
+
+  @@index([organizationId])
+}
+
+model TeamMember {
+  id       String   @id @default(uuid())
+  userId   String
+  teamId   String
+  joinedAt DateTime @default(now())
+  team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, teamId])
+  @@index([teamId])
+  @@index([userId])
+}
+
+model Invitation {
+  id             String         @id @default(uuid())
+  email          String
+  invitationType InvitationType
+  organizationId String?
+  role           OrgRole        @default(MEMBER)
+  invitedBy      String
+  token          String         @unique
+  status         InviteStatus   @default(PENDING)
+  expiresAt      DateTime
+  acceptedAt     DateTime?
+  createdAt      DateTime       @default(now())
+  inviter        User           @relation("InvitedBy", fields: [invitedBy], references: [id])
+  organization   Organization?  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([email, organizationId, invitationType])
+  @@index([token])
+  @@index([email])
 }
 
 model Firewall {
-  id          String     @id @default(uuid())
-  name        String
-  description String?
-  isActive    Boolean    @default(true)
-  userId      String
-  user        User       @relation(fields: [userId], references: [id])
-  rules       Rule[]
-  auditLogs   AuditLog[]
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
+  id             String        @id @default(uuid())
+  name           String
+  userId         String
+  createdAt      DateTime      @default(now())
+  description    String?
+  isActive       Boolean       @default(true)
+  updatedAt      DateTime      @updatedAt
+  organizationId String?
+  auditLogs      AuditLog[]
+  organization   Organization? @relation("OrganizationFirewalls", fields: [organizationId], references: [id], onDelete: Cascade)
+  user           User          @relation(fields: [userId], references: [id])
+  rules          Rule[]
+
+  @@index([organizationId])
 }
 
 model Rule {
   id         String   @id @default(uuid())
   name       String
   type       RuleType
-  pattern    String // Regex pattern or keyword
+  pattern    String
   action     Action   @default(REDACT)
   priority   Int      @default(0)
   isActive   Boolean  @default(true)
   firewallId String
-  firewall   Firewall @relation(fields: [firewallId], references: [id], onDelete: Cascade)
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
+  firewall   Firewall @relation(fields: [firewallId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
   id             String    @id @default(uuid())
   userId         String
-  user           User      @relation(fields: [userId], references: [id])
   firewallId     String?
-  firewall       Firewall? @relation(fields: [firewallId], references: [id])
-  inputText      String    @db.Text
-  sanitizedText  String    @db.Text
-  detectedIssues Json // Array of detected sensitive data
-  action         String // BLOCKED, REDACTED, ALLOWED
-  aiProvider     String? // OpenAI, Anthropic, etc.
+  inputText      String
+  sanitizedText  String
+  detectedIssues Json
+  action         String
+  aiProvider     String?
   metadata       Json?
   createdAt      DateTime  @default(now())
+  firewall       Firewall? @relation(fields: [firewallId], references: [id])
+  user           User      @relation(fields: [userId], references: [id])
 }
 
 model ApiKey {
@@ -85,16 +167,83 @@ model ApiKey {
   key       String    @unique
   name      String
   userId    String
-  user      User      @relation(fields: [userId], references: [id])
   isActive  Boolean   @default(true)
   lastUsed  DateTime?
   createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id])
+}
+
+model TeamInvite {
+  id        String   @id @default(uuid())
+  email     String
+  role      Role     @default(USER)
+  teamId    String
+  invitedBy String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  inviter   User     @relation("InvitedBy", fields: [invitedBy], references: [id])
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([email, teamId])
+}
+
+model Notification {
+  id        String               @id @default(uuid())
+  userId    String
+  type      NotificationType
+  title     String
+  message   String
+  severity  NotificationSeverity @default(INFO)
+  read      Boolean              @default(false)
+  metadata  Json?
+  createdAt DateTime             @default(now())
+  user      User                 @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, read])
+}
+
+model NotificationPreference {
+  id          String   @id @default(uuid())
+  userId      String
+  category    String
+  name        String
+  description String
+  email       Boolean  @default(true)
+  push        Boolean  @default(false)
+  slack       Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, category])
 }
 
 enum Role {
   USER
   ADMIN
   SUPER_ADMIN
+}
+
+enum OrgRole {
+  MEMBER
+  ADMIN
+}
+
+enum AccountType {
+  INDIVIDUAL
+  ORGANIZATION
+}
+
+enum InvitationType {
+  ORGANIZATION
+  TEAM
+}
+
+enum InviteStatus {
+  PENDING
+  ACCEPTED
+  EXPIRED
+  CANCELLED
 }
 
 enum Plan {
@@ -121,4 +270,18 @@ enum Action {
   BLOCK
   WARN
   ALLOW
+}
+
+enum NotificationType {
+  THREAT
+  SECURITY
+  TEAM
+  BILLING
+  SYSTEM
+}
+
+enum NotificationSeverity {
+  CRITICAL
+  WARNING
+  INFO
 }
