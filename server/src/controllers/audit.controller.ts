@@ -12,8 +12,10 @@ import { asyncHandler } from '../utils/asyncHandler';
 
 /**
  * Get all audit logs for the authenticated user with pagination and filters
+ * For organization admins: can see all organization activity
+ * For members: can only see their own activity
  * GET /api/audit-logs
- * Query params: page, limit, firewallId, action, startDate, endDate, search
+ * Query params: page, limit, firewallId, action, startDate, endDate, search, organizationId
  */
 export const getAuditLogs = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
@@ -26,6 +28,7 @@ export const getAuditLogs = asyncHandler(
       startDate,
       endDate,
       search,
+      organizationId,
     } = req.query;
 
     const pageNum = parseInt(page as string);
@@ -33,7 +36,40 @@ export const getAuditLogs = asyncHandler(
     const skip = (pageNum - 1) * limitNum;
 
     // Build where clause
-    const where: any = { userId };
+    let where: any = {};
+
+    // Determine access level
+    if (req.user?.accountType === 'ORGANIZATION' && organizationId) {
+      // Check organization membership and role
+      const membership = await prisma.organizationMember.findUnique({
+        where: {
+          userId_organizationId: {
+            userId,
+            organizationId: organizationId as string,
+          },
+        },
+      });
+
+      if (!membership) {
+        throw new ApiError(403, 'You are not a member of this organization');
+      }
+
+      if (membership.role === 'ADMIN') {
+        // Admin: See all logs for the organization
+        where.firewall = {
+          organizationId: organizationId as string,
+        };
+      } else {
+        // Member: Only see own logs within the organization
+        where.userId = userId;
+        where.firewall = {
+          organizationId: organizationId as string,
+        };
+      }
+    } else {
+      // Individual account or no organization specified: only own logs
+      where.userId = userId;
+    }
 
     if (firewallId) {
       where.firewallId = firewallId;

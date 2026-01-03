@@ -188,7 +188,6 @@ export async function validateApiKey(apiKey: string): Promise<any | null> {
           id: true,
           email: true,
           name: true,
-          role: true,
           isActive: true,
         },
       },
