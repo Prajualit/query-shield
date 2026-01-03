@@ -22,7 +22,7 @@ async function main() {
       email: 'demo@queryshield.com',
       password: hashedPassword,
       name: 'Demo User',
-      role: 'USER',
+      accountType: 'INDIVIDUAL',
     },
   });
 
@@ -33,7 +33,7 @@ async function main() {
       email: 'admin@queryshield.com',
       password: hashedPassword,
       name: 'Admin User',
-      role: 'ADMIN',
+      accountType: 'INDIVIDUAL',
     },
   });
 
