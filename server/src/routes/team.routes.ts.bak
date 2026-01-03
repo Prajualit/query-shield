@@ -1,0 +1,35 @@
+import { Router } from 'express';
+import {
+  createTeam,
+  getTeamInfo,
+  getTeamMembers,
+  getPendingInvites,
+  inviteTeamMember,
+  resendInvite,
+  cancelInvite,
+  updateMemberRole,
+  removeMember
+} from '../controllers/team.controller';
+import { authenticate } from '../middleware/auth.middleware';
+
+const router = Router();
+
+// All routes require authentication
+router.use(authenticate);
+
+// Team management
+router.post('/', createTeam);
+router.get('/', getTeamInfo);
+
+// Team members
+router.get('/members', getTeamMembers);
+router.delete('/members/:memberId', removeMember);
+router.patch('/members/:memberId/role', updateMemberRole);
+
+// Invites
+router.get('/invites', getPendingInvites);
+router.post('/invites', inviteTeamMember);
+router.post('/invites/:inviteId/resend', resendInvite);
+router.delete('/invites/:inviteId', cancelInvite);
+
+export default router;

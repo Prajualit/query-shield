@@ -1,0 +1,403 @@
+import { Request, Response } from 'express';
+import { prisma } from '../db';
+import { asyncHandler } from '../utils/asyncHandler';
+import { ApiError } from '../utils/apiError';
+import { ApiResponse } from '../utils/apiResponse';
+
+// Create a new team/organization
+export const createTeam = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { name } = req.body;
+
+  if (!name) {
+    throw new ApiError(400, 'Team name is required');
+  }
+
+  // Check if user already belongs to a team
+  const existingUser = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+
+  if (existingUser?.teamId) {
+    throw new ApiError(400, 'You are already part of a team. Leave your current team first.');
+  }
+
+  // Create team and update user to be ADMIN
+  const team = await prisma.team.create({
+    data: {
+      name,
+      members: {
+        connect: { id: userId }
+      }
+    },
+    include: {
+      members: {
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          role: true
+        }
+      }
+    }
+  });
+
+  // Update user role to ADMIN
+  await prisma.user.update({
+    where: { id: userId },
+    data: { role: 'ADMIN' }
+  });
+
+  res.status(201).json(
+    new ApiResponse(201, team, 'Team created successfully')
+  );
+});
+
+// Get current user's team info
+export const getTeamInfo = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: {
+      team: {
+        include: {
+          members: {
+            select: {
+              id: true,
+              name: true,
+              email: true,
+              role: true,
+              isActive: true,
+              createdAt: true
+            }
+          }
+        }
+      }
+    }
+  });
+
+  if (!user?.team) {
+    return res.status(200).json(
+      new ApiResponse(200, null, 'User is not part of any team')
+    );
+  }
+
+  res.status(200).json(
+    new ApiResponse(200, user.team, 'Team info fetched successfully')
+  );
+});
+
+// Get team members
+export const getTeamMembers = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { team: true }
+  });
+
+  if (!user?.teamId) {
+    // Return empty array if user is not part of any team
+    return res.status(200).json(
+      new ApiResponse(200, [], 'User is not part of any team')
+    );
+  }
+
+  const members = await prisma.user.findMany({
+    where: { teamId: user.teamId },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      lastActive: true,
+      createdAt: true
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, members, 'Team members fetched successfully')
+  );
+});
+
+// Get pending invites
+export const getPendingInvites = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { team: true }
+  });
+
+  if (!user?.teamId) {
+    // Return empty array if user is not part of any team
+    return res.status(200).json(
+      new ApiResponse(200, [], 'User is not part of any team')
+    );
+  }
+
+  const invites = await prisma.teamInvite.findMany({
+    where: {
+      teamId: user.teamId,
+      expiresAt: { gt: new Date() }
+    },
+    include: {
+      inviter: {
+        select: {
+          name: true,
+          email: true
+        }
+      }
+    },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, invites, 'Pending invites fetched successfully')
+  );
+});
+
+// Invite team member
+export const inviteTeamMember = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { email, role } = req.body;
+
+  if (!email) {
+    throw new ApiError(400, 'Email is required');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId },
+    include: { team: true }
+  });
+
+  if (!user?.teamId) {
+    throw new ApiError(404, 'User is not part of any team');
+  }
+
+  // Check if user has permission (only admins can invite)
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    throw new ApiError(403, 'You do not have permission to invite team members');
+  }
+
+  // Check if user already exists in team
+  const existingMember = await prisma.user.findFirst({
+    where: {
+      email,
+      teamId: user.teamId
+    }
+  });
+
+  if (existingMember) {
+    throw new ApiError(400, 'User is already a member of this team');
+  }
+
+  // Check if invite already exists
+  const existingInvite = await prisma.teamInvite.findFirst({
+    where: {
+      email,
+      teamId: user.teamId,
+      expiresAt: { gt: new Date() }
+    }
+  });
+
+  if (existingInvite) {
+    throw new ApiError(400, 'An active invite already exists for this email');
+  }
+
+  // Create invite
+  const invite = await prisma.teamInvite.create({
+    data: {
+      email,
+      role: role || 'USER',
+      teamId: user.teamId,
+      invitedBy: userId,
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
+    },
+    include: {
+      inviter: {
+        select: {
+          name: true,
+          email: true
+        }
+      }
+    }
+  });
+
+  // TODO: Send invitation email
+
+  res.status(201).json(
+    new ApiResponse(201, invite, 'Team member invited successfully')
+  );
+});
+
+// Resend invite
+export const resendInvite = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { inviteId } = req.params;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+
+  if (!user?.teamId) {
+    throw new ApiError(404, 'User is not part of any team');
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    throw new ApiError(403, 'You do not have permission to resend invites');
+  }
+
+  const invite = await prisma.teamInvite.findUnique({
+    where: { id: inviteId }
+  });
+
+  if (!invite || invite.teamId !== user.teamId) {
+    throw new ApiError(404, 'Invite not found');
+  }
+
+  // Update expiration date
+  const updatedInvite = await prisma.teamInvite.update({
+    where: { id: inviteId },
+    data: {
+      expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+    }
+  });
+
+  // TODO: Resend invitation email
+
+  res.status(200).json(
+    new ApiResponse(200, updatedInvite, 'Invite resent successfully')
+  );
+});
+
+// Cancel invite
+export const cancelInvite = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { inviteId } = req.params;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+
+  if (!user?.teamId) {
+    throw new ApiError(404, 'User is not part of any team');
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    throw new ApiError(403, 'You do not have permission to cancel invites');
+  }
+
+  const invite = await prisma.teamInvite.findUnique({
+    where: { id: inviteId }
+  });
+
+  if (!invite || invite.teamId !== user.teamId) {
+    throw new ApiError(404, 'Invite not found');
+  }
+
+  await prisma.teamInvite.delete({
+    where: { id: inviteId }
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, null, 'Invite cancelled successfully')
+  );
+});
+
+// Update member role
+export const updateMemberRole = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { memberId } = req.params;
+  const { role } = req.body;
+
+  if (!role) {
+    throw new ApiError(400, 'Role is required');
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+
+  if (!user?.teamId) {
+    throw new ApiError(404, 'User is not part of any team');
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    throw new ApiError(403, 'You do not have permission to update member roles');
+  }
+
+  const member = await prisma.user.findUnique({
+    where: { id: memberId }
+  });
+
+  if (!member || member.teamId !== user.teamId) {
+    throw new ApiError(404, 'Member not found in your team');
+  }
+
+  // Prevent changing own role
+  if (memberId === userId) {
+    throw new ApiError(400, 'You cannot change your own role');
+  }
+
+  const updatedMember = await prisma.user.update({
+    where: { id: memberId },
+    data: { role },
+    select: {
+      id: true,
+      name: true,
+      email: true,
+      role: true,
+      isActive: true,
+      lastActive: true,
+      createdAt: true
+    }
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, updatedMember, 'Member role updated successfully')
+  );
+});
+
+// Remove team member
+export const removeMember = asyncHandler(async (req: Request, res: Response) => {
+  const userId = (req as any).user.id;
+  const { memberId } = req.params;
+
+  const user = await prisma.user.findUnique({
+    where: { id: userId }
+  });
+
+  if (!user?.teamId) {
+    throw new ApiError(404, 'User is not part of any team');
+  }
+
+  if (user.role !== 'ADMIN' && user.role !== 'SUPER_ADMIN') {
+    throw new ApiError(403, 'You do not have permission to remove team members');
+  }
+
+  const member = await prisma.user.findUnique({
+    where: { id: memberId }
+  });
+
+  if (!member || member.teamId !== user.teamId) {
+    throw new ApiError(404, 'Member not found in your team');
+  }
+
+  // Prevent removing self
+  if (memberId === userId) {
+    throw new ApiError(400, 'You cannot remove yourself from the team');
+  }
+
+  await prisma.user.update({
+    where: { id: memberId },
+    data: { teamId: null }
+  });
+
+  res.status(200).json(
+    new ApiResponse(200, null, 'Member removed successfully')
+  );
+});
