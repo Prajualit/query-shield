@@ -20,15 +20,26 @@ const registerSchema = z.object({
   email: z.string().email('Invalid email address'),
   password: z.string().min(8, 'Password must be at least 8 characters'),
   confirmPassword: z.string(),
+  accountType: z.enum(['INDIVIDUAL', 'ORGANIZATION']),
+  organizationName: z.string().optional(),
 }).refine((data) => data.password === data.confirmPassword, {
   message: "Passwords don't match",
   path: ['confirmPassword'],
+}).refine((data) => {
+  if (data.accountType === 'ORGANIZATION') {
+    return data.organizationName && data.organizationName.length >= 2;
+  }
+  return true;
+}, {
+  message: "Organization name must be at least 2 characters",
+  path: ['organizationName'],
 });
 
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export default function RegisterPage() {
   const [error, setError] = useState('');
+  const [accountType, setAccountType] = useState<'INDIVIDUAL' | 'ORGANIZATION'>('INDIVIDUAL');
   const dispatch = useAppDispatch();
   const router = useRouter();
   const { loading } = useAppSelector((state) => state.auth);
@@ -37,14 +48,35 @@ export default function RegisterPage() {
     register,
     handleSubmit,
     formState: { errors },
+    setValue,
   } = useForm<RegisterFormData>({
     resolver: zodResolver(registerSchema),
+    defaultValues: {
+      accountType: 'INDIVIDUAL',
+    },
   });
 
   const onSubmit = async (data: RegisterFormData) => {
     try {
       setError('');
-      await dispatch(registerUserAction({ email: data.email, password: data.password, name: data.name })).unwrap();
+      const payload: {
+        email: string;
+        password: string;
+        name: string;
+        accountType: 'INDIVIDUAL' | 'ORGANIZATION';
+        organizationName?: string;
+      } = { 
+        email: data.email, 
+        password: data.password, 
+        name: data.name,
+        accountType: data.accountType,
+      };
+      
+      if (data.accountType === 'ORGANIZATION') {
+        payload.organizationName = data.organizationName;
+      }
+      
+      await dispatch(registerUserAction(payload)).unwrap();
       router.push('/dashboard');
     } catch (err: unknown) {
       const error = err as string;
@@ -73,8 +105,68 @@ export default function RegisterPage() {
               </div>
             )}
 
+            {/* Account Type Selection */}
             <div className="space-y-2">
-              <Label htmlFor="name" className="text-neutral-800 dark:text-neutral-200 font-medium">Full Name</Label>
+              <Label className="text-neutral-800 dark:text-neutral-200 font-medium">Account Type</Label>
+              <div className="grid grid-cols-2 gap-3">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountType('INDIVIDUAL');
+                    setValue('accountType', 'INDIVIDUAL');
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    accountType === 'INDIVIDUAL'
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                      : 'border-neutral-300 dark:border-neutral-600 hover:border-amber-300'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">👤</div>
+                  <div className="font-semibold text-neutral-900 dark:text-neutral-100">Individual</div>
+                  <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">Personal account</div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAccountType('ORGANIZATION');
+                    setValue('accountType', 'ORGANIZATION');
+                  }}
+                  className={`p-4 rounded-lg border-2 transition-all ${
+                    accountType === 'ORGANIZATION'
+                      ? 'border-amber-500 bg-amber-50 dark:bg-amber-900/20'
+                      : 'border-neutral-300 dark:border-neutral-600 hover:border-amber-300'
+                  }`}
+                >
+                  <div className="text-2xl mb-2">🏢</div>
+                  <div className="font-semibold text-neutral-900 dark:text-neutral-100">Organization</div>
+                  <div className="text-xs text-neutral-600 dark:text-neutral-400 mt-1">Team account</div>
+                </button>
+              </div>
+            </div>
+
+            {/* Organization Name (only for ORGANIZATION type) */}
+            {accountType === 'ORGANIZATION' && (
+              <div className="space-y-2">
+                <Label htmlFor="organizationName" className="text-neutral-800 dark:text-neutral-200 font-medium">
+                  Organization Name
+                </Label>
+                <Input
+                  id="organizationName"
+                  type="text"
+                  placeholder="Acme Inc."
+                  className="bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 border-neutral-300 dark:border-neutral-600"
+                  {...register('organizationName')}
+                />
+                {errors.organizationName && (
+                  <p className="text-sm text-red-600 dark:text-red-400 font-medium">{errors.organizationName.message}</p>
+                )}
+              </div>
+            )}
+
+            <div className="space-y-2">
+              <Label htmlFor="name" className="text-neutral-800 dark:text-neutral-200 font-medium">
+                {accountType === 'ORGANIZATION' ? 'Your Full Name' : 'Full Name'}
+              </Label>
               <Input
                 id="name"
                 type="text"
