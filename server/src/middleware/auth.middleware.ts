@@ -54,6 +54,8 @@ export const requireOrgAdmin = async (
     // Get organizationId from params or user context
     const organizationId = req.params.organizationId || req.user.organizationId;
 
+    // console.log('requireOrgAdmin - User:', req.user.id, 'OrgId from params:', req.params.organizationId, 'OrgId from token:', req.user.organizationId);
+
     if (!organizationId) {
       throw new ApiError(400, 'Organization ID is required');
     }
@@ -66,6 +68,8 @@ export const requireOrgAdmin = async (
         },
       },
     });
+
+    console.log('requireOrgAdmin - Membership found:', membership);
 
     if (!membership || membership.role !== 'ADMIN') {
       throw new ApiError(403, 'Organization administrator access required');

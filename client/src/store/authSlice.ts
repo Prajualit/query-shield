@@ -94,7 +94,13 @@ export const verifyAuth = createAsyncThunk(
     try {
       const response = await api.getCurrentUser();
       if (response.success && response.data?.user) {
-        return response.data.user;
+        const user = response.data.user;
+        // Update localStorage with fresh user data including org context
+        localStorage.setItem('user', JSON.stringify(user));
+        if (user.organizationId) {
+          localStorage.setItem('currentOrgId', user.organizationId);
+        }
+        return user;
       }
       throw new Error('Verification failed');
     } catch (error: unknown) {
