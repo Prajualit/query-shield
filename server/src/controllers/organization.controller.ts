@@ -397,12 +397,22 @@ export const removeMember = asyncHandler(
       throw new ApiError(403, "Only administrators can remove members");
     }
 
+    // Get the member to remove by membership ID
+    const memberToRemove = await prisma.organizationMember.findUnique({
+      where: { id: memberId },
+      include: { user: true },
+    });
+
+    if (!memberToRemove || memberToRemove.organizationId !== organizationId) {
+      throw new ApiError(404, "Member not found in organization");
+    }
+
     // Prevent removing organization creator
     const organization = await prisma.organization.findUnique({
       where: { id: organizationId },
     });
 
-    if (organization?.createdBy === memberId) {
+    if (organization?.createdBy === memberToRemove.userId) {
       throw new ApiError(400, "Cannot remove organization creator");
     }
 
@@ -410,19 +420,14 @@ export const removeMember = asyncHandler(
     await prisma.$transaction([
       prisma.teamMember.deleteMany({
         where: {
-          userId: memberId,
+          userId: memberToRemove.userId,
           team: {
             organizationId,
           },
         },
       }),
       prisma.organizationMember.delete({
-        where: {
-          userId_organizationId: {
-            userId: memberId,
-            organizationId,
-          },
-        },
+        where: { id: memberId },
       }),
     ]);
 

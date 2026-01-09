@@ -6,7 +6,7 @@ import {
   getOrganizationInvitations,
   resendInvitation,
 } from '../controllers/invitation.controller';
-import { authenticate, requireOrgMember } from '../middleware/auth.middleware';
+import { authenticate, requireOrgAdmin } from '../middleware/auth.middleware';
 
 const router = Router();
 
@@ -14,10 +14,10 @@ const router = Router();
 router.get('/token/:token', getInvitationByToken);
 router.post('/accept', acceptInvitation);
 
-// Protected routes
+// Protected routes - require admin access
 router.use(authenticate);
-router.get('/organization/:organizationId', requireOrgMember, getOrganizationInvitations);
-router.post('/:invitationId/resend', resendInvitation);
-router.delete('/:invitationId', cancelInvitation);
+router.get('/organization/:organizationId', requireOrgAdmin, getOrganizationInvitations);
+router.post('/:invitationId/resend', requireOrgAdmin, resendInvitation);
+router.delete('/:invitationId', requireOrgAdmin, cancelInvitation);
 
 export default router;

@@ -1,13 +1,15 @@
 'use client';
 
 import { ReactNode, useEffect, useState } from 'react';
-import { Provider, useSelector } from 'react-redux';
+import { Provider, useSelector, useDispatch } from 'react-redux';
 import { PersistGate } from 'redux-persist/integration/react';
 import { store, persistor } from '@/store/store';
-import type { RootState } from '@/store/store';
+import type { RootState, AppDispatch } from '@/store/store';
+import { verifyAuth } from '@/store/authSlice';
 
 function AuthInitializer() {
-  const { accessToken, refreshToken } = useSelector((state: RootState) => state.auth);
+  const dispatch = useDispatch<AppDispatch>();
+  const { accessToken, refreshToken, user } = useSelector((state: RootState) => state.auth);
   const [initialized, setInitialized] = useState(false);
 
   useEffect(() => {
@@ -16,8 +18,11 @@ function AuthInitializer() {
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
       setInitialized(true);
+      
+      // Fetch fresh user data to ensure org context is up-to-date
+      dispatch(verifyAuth());
     }
-  }, [accessToken, refreshToken, initialized]);
+  }, [accessToken, refreshToken, initialized, dispatch]);
 
   return null;
 }
