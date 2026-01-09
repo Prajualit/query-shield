@@ -28,22 +28,28 @@ export default function InvitationsPage() {
   const [success, setSuccess] = useState("");
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
-  const organizationId = typeof window !== "undefined" ? localStorage.getItem("currentOrgId") : null;
+  const organizationId = user?.organizationId || (typeof window !== "undefined" ? localStorage.getItem("currentOrgId") : null);
   const isAdmin = user?.orgRole === "ADMIN";
 
   const fetchInvitations = useCallback(async () => {
-    if (!organizationId) return;
+    if (!organizationId) {
+      console.log("No organizationId found. User:", user);
+      return;
+    }
+    console.log("Fetching invitations for org:", organizationId, "User role:", user?.orgRole);
     try {
       const response = await api.getOrganizationInvitations(organizationId);
       if (response.success) {
         setInvitations(response.data || []);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to fetch invitations:", err);
+      console.error("Error response:", err.response?.data);
+      setError(err.response?.data?.message || "Failed to load invitations");
     } finally {
       setLoading(false);
     }
-  }, [organizationId]);
+  }, [organizationId, user]);
 
   useEffect(() => {
     fetchInvitations();

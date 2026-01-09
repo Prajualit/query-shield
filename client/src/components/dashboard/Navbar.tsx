@@ -5,7 +5,7 @@ import { logout } from '@/store/authSlice';
 import { useRouter } from 'next/navigation';
 import { useTheme } from "@/contexts/ThemeContext";
 import { Button } from "@/components/ui/button";
-import { LogOut, User, Bell, Sun, Moon, Building2, Crown, Shield } from "lucide-react";
+import { LogOut, User, Sun, Moon, Building2, Crown, Shield } from "lucide-react";
 
 export function Navbar() {
   const user = useAppSelector((state) => state.auth.user);
@@ -61,16 +61,6 @@ export function Navbar() {
           ) : (
             <Sun className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
           )}
-        </Button>
-
-        {/* Notifications */}
-        <Button
-          variant="ghost"
-          size="icon"
-          className="relative hover:bg-neutral-100 dark:hover:bg-neutral-700"
-        >
-          <Bell className="h-5 w-5 text-neutral-600 dark:text-neutral-300" />
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-amber-500 shadow-lg shadow-amber-500/50" />
         </Button>
 
         {/* User Menu */}
