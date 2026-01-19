@@ -415,6 +415,25 @@ class ApiClient {
     return response.data;
   }
 
+  async getTeamMembersById(teamId: string): Promise<ApiResponse<Array<{
+    id: string;
+    role: 'MANAGER' | 'MEMBER';
+    user: {
+      id: string;
+      email: string;
+      name: string | null;
+    };
+    joinedAt: string;
+  }>>> {
+    const response = await this.client.get(`/teams/${teamId}/members`);
+    return response.data;
+  }
+
+  async updateTeamMemberRole(teamId: string, memberId: string, role: 'MANAGER' | 'MEMBER'): Promise<ApiResponse<unknown>> {
+    const response = await this.client.patch(`/teams/${teamId}/members/${memberId}/role`, { role });
+    return response.data;
+  }
+
   async removeTeamMember(teamId: string, userId: string): Promise<ApiResponse<null>> {
     const response = await this.client.delete(`/teams/${teamId}/members/${userId}`);
     return response.data;

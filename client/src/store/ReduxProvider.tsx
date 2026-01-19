@@ -18,11 +18,8 @@ function AuthInitializer() {
       localStorage.setItem('accessToken', accessToken);
       localStorage.setItem('refreshToken', refreshToken);
       setInitialized(true);
-      
-      // Fetch fresh user data to ensure org context is up-to-date
-      dispatch(verifyAuth());
     }
-  }, [accessToken, refreshToken, initialized, dispatch]);
+  }, [accessToken, refreshToken, initialized]);
 
   return null;
 }

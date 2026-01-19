@@ -209,7 +209,7 @@ export interface TeamMember {
   id: string;
   name: string;
   email: string;
-  role: 'USER' | 'ADMIN' | 'SUPER_ADMIN';
+  role: 'MANAGER' | 'MEMBER';
   isActive: boolean;
   lastActive: string | null;
   createdAt: string;

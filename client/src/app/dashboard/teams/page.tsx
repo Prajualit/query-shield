@@ -18,6 +18,7 @@ interface Team {
 
 interface TeamMember {
   id: string;
+  role: "MANAGER" | "MEMBER";
   user: {
     id: string;
     email: string;
@@ -26,18 +27,29 @@ interface TeamMember {
   joinedAt: string;
 }
 
+interface OrganizationMember {
+  id: string;
+  role: "ADMIN" | "MEMBER";
+  user: {
+    id: string;
+    email: string;
+    name: string | null;
+  };
+}
+
 export default function TeamsPage() {
   const { user } = useAppSelector((state) => state.auth);
   const queryClient = useQueryClient();
   const [teams, setTeams] = useState<Team[]>([]);
   const [selectedTeam, setSelectedTeam] = useState<Team | null>(null);
   const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [organizationMembers, setOrganizationMembers] = useState<OrganizationMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showAddMemberModal, setShowAddMemberModal] = useState(false);
   const [newTeamName, setNewTeamName] = useState("");
   const [newTeamDescription, setNewTeamDescription] = useState("");
-  const [memberUserId, setMemberUserId] = useState("");
+  const [selectedUserId, setSelectedUserId] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
@@ -54,9 +66,10 @@ export default function TeamsPage() {
         setTeams(response.data || []);
         setError("");
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch teams:", err);
-      const errorMessage = err?.response?.data?.message || "Failed to load teams. Please try again.";
+      const error = err as { response?: { data?: { message?: string } } };
+      const errorMessage = error?.response?.data?.message || "Failed to load teams. Please try again.";
       setError(errorMessage);
       setTeams([]);
     } finally {
@@ -64,20 +77,28 @@ export default function TeamsPage() {
     }
   }, [organizationId]);
 
+  const fetchOrganizationMembers = useCallback(async () => {
+    if (!organizationId) return;
+    try {
+      const response = await api.getOrganizationMembers(organizationId);
+      if (response.success) {
+        setOrganizationMembers(response.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch organization members:", err);
+    }
+  }, [organizationId]);
+
   useEffect(() => {
     fetchTeams();
-  }, [fetchTeams]);
+    fetchOrganizationMembers();
+  }, [fetchTeams, fetchOrganizationMembers]);
 
   const fetchTeamMembers = async (teamId: string) => {
     try {
-      const response = await fetch(`/api/teams/${teamId}/members`, {
-        headers: {
-          Authorization: `Bearer ${localStorage.getItem("accessToken")}`,
-        },
-      });
-      const data = await response.json();
-      if (data.success) {
-        setTeamMembers(data.data || []);
+      const response = await api.getTeamMembersById(teamId);
+      if (response.success) {
+        setTeamMembers(response.data || []);
       }
     } catch (err) {
       console.error("Failed to fetch team members:", err);
@@ -99,9 +120,7 @@ export default function TeamsPage() {
         setNewTeamName("");
         setNewTeamDescription("");
         setShowCreateModal(false);
-        // Immediately refresh teams list
         await fetchTeams();
-        // Also invalidate any related queries
         queryClient.invalidateQueries({ queryKey: ['teams'] });
         setTimeout(() => setSuccess(""), 3000);
       }
@@ -130,34 +149,82 @@ export default function TeamsPage() {
   };
 
   const handleAddMember = async () => {
-    if (!memberUserId.trim() || !selectedTeam) return;
+    if (!selectedUserId || !selectedTeam) return;
     setError("");
+    setActionLoading(true);
     try {
-      await api.addTeamMember(selectedTeam.id, memberUserId);
+      await api.addTeamMember(selectedTeam.id, selectedUserId);
       setSuccess("Member added successfully!");
-      setMemberUserId("");
+      setSelectedUserId("");
       setShowAddMemberModal(false);
       fetchTeamMembers(selectedTeam.id);
       fetchTeams();
-    } catch (err) {
-      setError("Failed to add member. Make sure the user ID is correct.");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      const errorMessage = error?.response?.data?.message || "Failed to add member";
+      setError(errorMessage);
       console.error(err);
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setActionLoading(false);
     }
   };
 
-  const handleRemoveMember = async (userId: string) => {
+  const handleRemoveMember = async (userId: string, userEmail: string) => {
     if (!selectedTeam) return;
-    if (!confirm("Are you sure you want to remove this member?")) return;
+    if (!confirm(`Are you sure you want to remove ${userEmail} from ${selectedTeam.name}?`)) return;
+    setActionLoading(true);
     try {
       await api.removeTeamMember(selectedTeam.id, userId);
       setSuccess("Member removed successfully!");
       fetchTeamMembers(selectedTeam.id);
       fetchTeams();
-    } catch (err) {
-      setError("Failed to remove member");
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      const errorMessage = error?.response?.data?.message || "Failed to remove member";
+      setError(errorMessage);
       console.error(err);
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setActionLoading(false);
     }
   };
+
+  const handleUpdateRole = async (memberId: string, newRole: "MANAGER" | "MEMBER", memberEmail: string) => {
+    if (!selectedTeam) return;
+    const roleText = newRole === "MANAGER" ? "Team Manager" : "Member";
+    if (!confirm(`Are you sure you want to change ${memberEmail}'s role to ${roleText}?`)) return;
+    setActionLoading(true);
+    try {
+      await api.updateTeamMemberRole(selectedTeam.id, memberId, newRole);
+      setSuccess(`Role updated to ${roleText} successfully!`);
+      fetchTeamMembers(selectedTeam.id);
+      setTimeout(() => setSuccess(""), 3000);
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      const errorMessage = error?.response?.data?.message || "Failed to update role";
+      setError(errorMessage);
+      console.error(err);
+      setTimeout(() => setError(""), 5000);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  // Check if current user is a team manager of the selected team
+  const isTeamManager = selectedTeam && teamMembers.some(
+    (m) => m.user.id === user?.id && m.role === "MANAGER"
+  );
+
+  // Determine if user can manage members (admin or team manager)
+  const canManageMembers = isAdmin || isTeamManager;
+
+  // Get available members to add (not already in the team)
+  const availableMembers = organizationMembers.filter(
+    (orgMember) => !teamMembers.some((teamMember) => teamMember.user.id === orgMember.user.id)
+  );
 
   // Check if user belongs to an organization
   if (!organizationId) {
@@ -317,36 +384,81 @@ export default function TeamsPage() {
                   <p className="text-neutral-500 text-center py-8">No members in this team</p>
                 ) : (
                   <div className="space-y-3">
-                    {teamMembers.map((member) => (
-                      <div
-                        key={member.id}
-                        className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700"
-                      >
-                        <div className="flex items-center gap-3">
-                          <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                            <span className="text-amber-600 dark:text-amber-400 font-semibold">
-                              {member.user.name?.[0] || member.user.email[0].toUpperCase()}
-                            </span>
+                    {teamMembers.map((member) => {
+                      const memberOrgRole = organizationMembers.find(m => m.user.id === member.user.id)?.role;
+                      const isOrgAdmin = memberOrgRole === "ADMIN";
+                      const canRemove = canManageMembers && member.user.id !== user?.id && 
+                        (isAdmin || (!isOrgAdmin && member.role !== "MANAGER"));
+                      const canChangeRole = canManageMembers && member.user.id !== user?.id;
+                      
+                      return (
+                        <div
+                          key={member.id}
+                          className="flex items-center justify-between p-4 bg-neutral-50 dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="h-10 w-10 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                              <span className="text-amber-600 dark:text-amber-400 font-semibold">
+                                {member.user.name?.[0] || member.user.email[0].toUpperCase()}
+                              </span>
+                            </div>
+                            <div>
+                              <div className="flex items-center gap-2">
+                                <p className="font-medium text-neutral-900 dark:text-neutral-100">
+                                  {member.user.name || member.user.email}
+                                </p>
+                                {member.user.id === user?.id && (
+                                  <span className="text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 px-2 py-0.5 rounded-full">
+                                    You
+                                  </span>
+                                )}
+                                {isOrgAdmin && (
+                                  <span className="text-xs bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-400 px-2 py-0.5 rounded-full">
+                                    Org Admin
+                                  </span>
+                                )}
+                                {member.role === "MANAGER" && (
+                                  <span className="text-xs bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 px-2 py-0.5 rounded-full">
+                                    Team Manager
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-neutral-500">{member.user.email}</p>
+                            </div>
                           </div>
-                          <div>
-                            <p className="font-medium text-neutral-900 dark:text-neutral-100">
-                              {member.user.name || member.user.email}
-                            </p>
-                            <p className="text-sm text-neutral-500">{member.user.email}</p>
-                          </div>
+                          {(canRemove || canChangeRole) && (
+                            <div className="flex items-center gap-2">
+                              {canChangeRole && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => handleUpdateRole(
+                                    member.user.id,
+                                    member.role === "MANAGER" ? "MEMBER" : "MANAGER",
+                                    member.user.email
+                                  )}
+                                  disabled={actionLoading}
+                                  className="text-amber-600 hover:text-amber-700 hover:bg-amber-50 dark:hover:bg-amber-900/20 disabled:opacity-50"
+                                >
+                                  {member.role === "MANAGER" ? "Demote" : "Promote"}
+                                </Button>
+                              )}
+                              {canRemove && (
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => handleRemoveMember(member.user.id, member.user.email)}
+                                  disabled={actionLoading}
+                                  className="text-red-500 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-900/20 disabled:opacity-50"
+                                >
+                                  <UserMinus className="h-4 w-4" />
+                                </Button>
+                              )}
+                            </div>
+                          )}
                         </div>
-                        {isAdmin && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleRemoveMember(member.user.id)}
-                            className="text-red-500 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <UserMinus className="h-4 w-4" />
-                          </Button>
-                        )}
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 )}
               </CardContent>
@@ -419,22 +531,37 @@ export default function TeamsPage() {
       {/* Add Member Modal */}
       {showAddMemberModal && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md mx-4">
+          <Card className="w-full max-w-md mx-4 bg-white dark:bg-neutral-800">
             <CardHeader>
-              <CardTitle>Add Team Member</CardTitle>
-              <CardDescription>Add a member to {selectedTeam?.name} using their user ID</CardDescription>
+              <CardTitle className="text-neutral-900 dark:text-neutral-100">Add Team Member</CardTitle>
+              <CardDescription>Add a member from your organization to {selectedTeam?.name}</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
-                <label className="text-sm font-medium">User ID</label>
-                <Input
-                  value={memberUserId}
-                  onChange={(e) => setMemberUserId(e.target.value)}
-                  placeholder="Enter user ID"
-                  className="mt-1"
-                />
-                <p className="text-xs text-neutral-500 mt-1">
-                  The user must be a member of your organization
+                <label className="text-sm font-medium text-neutral-700 dark:text-neutral-300">Select Member</label>
+                {availableMembers.length === 0 ? (
+                  <div className="mt-2 p-4 bg-neutral-50 dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-700">
+                    <p className="text-sm text-neutral-500 text-center">
+                      All organization members are already in this team
+                    </p>
+                  </div>
+                ) : (
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className="mt-1 w-full p-2 border border-neutral-300 dark:border-neutral-600 rounded-md bg-white dark:bg-neutral-900 text-neutral-900 dark:text-neutral-100 focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
+                  >
+                    <option value="">-- Select a member --</option>
+                    {availableMembers.map((member) => (
+                      <option key={member.user.id} value={member.user.id}>
+                        {member.user.name || member.user.email} ({member.user.email})
+                        {member.role === "ADMIN" ? " - Admin" : ""}
+                      </option>
+                    ))}
+                  </select>
+                )}
+                <p className="text-xs text-neutral-500 dark:text-neutral-400 mt-2">
+                  Only organization members can be added to teams
                 </p>
               </div>
               <div className="flex gap-3 pt-4">
@@ -442,19 +569,20 @@ export default function TeamsPage() {
                   variant="outline" 
                   onClick={() => {
                     setShowAddMemberModal(false);
-                    setMemberUserId("");
+                    setSelectedUserId("");
                     setError("");
                   }} 
                   className="flex-1"
+                  disabled={actionLoading}
                 >
                   Cancel
                 </Button>
                 <Button
                   onClick={handleAddMember}
-                  disabled={!memberUserId.trim()}
+                  disabled={!selectedUserId || actionLoading || availableMembers.length === 0}
                   className="flex-1 bg-linear-to-r from-amber-500 to-yellow-600 hover:from-amber-600 hover:to-yellow-700 text-white disabled:opacity-50"
                 >
-                  Add Member
+                  {actionLoading ? "Adding..." : "Add Member"}
                 </Button>
               </div>
             </CardContent>
