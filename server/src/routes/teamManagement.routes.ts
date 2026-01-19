@@ -8,6 +8,7 @@ import {
   getTeamMembers,
   addTeamMember,
   removeTeamMember,
+  updateTeamMemberRole,
 } from '../controllers/teamManagement.controller';
 import { authenticate, requireOrgAdmin, requireOrgMember } from '../middleware/auth.middleware';
 
@@ -19,13 +20,14 @@ router.use(authenticate);
 // Team management
 router.get('/organization/:organizationId', requireOrgMember, getOrganizationTeams);
 router.post('/', requireOrgAdmin, createTeam);
-router.get('/:teamId', requireOrgMember, getTeam);
+router.get('/:teamId', authenticate, getTeam);
 router.patch('/:teamId', requireOrgAdmin, updateTeam);
 router.delete('/:teamId', requireOrgAdmin, deleteTeam);
 
 // Team member management
-router.get('/:teamId/members', requireOrgMember, getTeamMembers);
+router.get('/:teamId/members', authenticate, getTeamMembers);
 router.post('/:teamId/members', requireOrgAdmin, addTeamMember);
-router.delete('/:teamId/members/:memberId', requireOrgAdmin, removeTeamMember);
+router.patch('/:teamId/members/:memberId/role', authenticate, updateTeamMemberRole);
+router.delete('/:teamId/members/:memberId', authenticate, removeTeamMember);
 
 export default router;

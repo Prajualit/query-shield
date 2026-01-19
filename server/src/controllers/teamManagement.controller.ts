@@ -129,17 +129,29 @@ export const createTeam = asyncHandler(
       throw new ApiError(403, "Only administrators can create teams");
     }
 
+    // Create team and automatically add creator as MANAGER
     const team = await prisma.team.create({
       data: {
         name,
         description,
         organizationId,
+        members: {
+          create: {
+            userId: req.user!.id,
+            role: 'MANAGER',
+          },
+        },
       },
       include: {
         organization: {
           select: {
             id: true,
             name: true,
+          },
+        },
+        _count: {
+          select: {
+            members: true,
           },
         },
       },
@@ -237,9 +249,15 @@ export const getTeamMembers = asyncHandler(
   async (req: AuthRequest, res: Response) => {
     const { teamId } = req.params;
 
+    console.log('=== Get Team Members Debug ===');
+    console.log('teamId:', teamId);
+    console.log('userId:', req.user?.id);
+
     const team = await prisma.team.findUnique({
       where: { id: teamId },
     });
+
+    console.log('Team found:', team);
 
     if (!team) {
       throw new ApiError(404, "Team not found");
@@ -254,6 +272,8 @@ export const getTeamMembers = asyncHandler(
         },
       },
     });
+
+    console.log('Organization membership:', membership);
 
     if (!membership) {
       throw new ApiError(403, "You do not have access to this team");
@@ -275,6 +295,8 @@ export const getTeamMembers = asyncHandler(
         joinedAt: 'asc',
       },
     });
+
+    console.log('Team members found:', members.length);
 
     res.status(200).json(
       new ApiResponse(200, members, "Team members retrieved successfully")
@@ -373,8 +395,8 @@ export const removeTeamMember = asyncHandler(
       throw new ApiError(404, "Team not found");
     }
 
-    // Check if user is an admin in the organization
-    const membership = await prisma.organizationMember.findUnique({
+    // Check if user is an admin or team manager
+    const orgMembership = await prisma.organizationMember.findUnique({
       where: {
         userId_organizationId: {
           userId: req.user!.id,
@@ -383,8 +405,54 @@ export const removeTeamMember = asyncHandler(
       },
     });
 
-    if (!membership || membership.role !== 'ADMIN') {
-      throw new ApiError(403, "Only administrators can remove team members");
+    const teamMembership = await prisma.teamMember.findUnique({
+      where: {
+        userId_teamId: {
+          userId: req.user!.id,
+          teamId,
+        },
+      },
+    });
+
+    const isOrgAdmin = orgMembership?.role === 'ADMIN';
+    const isTeamManager = teamMembership?.role === 'MANAGER';
+
+    if (!isOrgAdmin && !isTeamManager) {
+      throw new ApiError(403, "Only administrators and team managers can remove team members");
+    }
+
+    // Get the member to be removed
+    const memberToRemove = await prisma.teamMember.findUnique({
+      where: {
+        userId_teamId: {
+          userId: memberId,
+          teamId,
+        },
+      },
+    });
+
+    if (!memberToRemove) {
+      throw new ApiError(404, "Team member not found");
+    }
+
+    // Check if the member to remove is an org admin
+    const memberOrgStatus = await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: memberId,
+          organizationId: team.organizationId,
+        },
+      },
+    });
+
+    // Team managers cannot remove org admins or other team managers
+    if (isTeamManager && !isOrgAdmin) {
+      if (memberOrgStatus?.role === 'ADMIN') {
+        throw new ApiError(403, "Team managers cannot remove organization administrators");
+      }
+      if (memberToRemove.role === 'MANAGER') {
+        throw new ApiError(403, "Team managers cannot remove other team managers");
+      }
     }
 
     await prisma.teamMember.delete({
@@ -398,6 +466,75 @@ export const removeTeamMember = asyncHandler(
 
     res.status(200).json(
       new ApiResponse(200, null, "Team member removed successfully")
+    );
+  }
+);
+
+// Update team member role
+export const updateTeamMemberRole = asyncHandler(
+  async (req: AuthRequest, res: Response) => {
+    const { teamId, memberId } = req.params;
+    const { role } = req.body;
+
+    if (!['MANAGER', 'MEMBER'].includes(role)) {
+      throw new ApiError(400, "Invalid role. Must be MANAGER or MEMBER");
+    }
+
+    const team = await prisma.team.findUnique({
+      where: { id: teamId },
+    });
+
+    if (!team) {
+      throw new ApiError(404, "Team not found");
+    }
+
+    // Check if user is an admin or team manager
+    const orgMembership = await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId: req.user!.id,
+          organizationId: team.organizationId,
+        },
+      },
+    });
+
+    const teamMembership = await prisma.teamMember.findUnique({
+      where: {
+        userId_teamId: {
+          userId: req.user!.id,
+          teamId,
+        },
+      },
+    });
+
+    const isOrgAdmin = orgMembership?.role === 'ADMIN';
+    const isTeamManager = teamMembership?.role === 'MANAGER';
+
+    if (!isOrgAdmin && !isTeamManager) {
+      throw new ApiError(403, "Only administrators and team managers can update team member roles");
+    }
+
+    const updatedMember = await prisma.teamMember.update({
+      where: {
+        userId_teamId: {
+          userId: memberId,
+          teamId,
+        },
+      },
+      data: { role },
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            name: true,
+          },
+        },
+      },
+    });
+
+    res.status(200).json(
+      new ApiResponse(200, updatedMember, "Team member role updated successfully")
     );
   }
 );
