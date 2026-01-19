@@ -87,6 +87,7 @@ model TeamMember {
   id       String   @id @default(uuid())
   userId   String
   teamId   String
+  role     TeamRole @default(MEMBER)
   joinedAt DateTime @default(now())
   team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -284,4 +285,9 @@ enum NotificationSeverity {
   CRITICAL
   WARNING
   INFO
+}
+
+enum TeamRole {
+  MANAGER
+  MEMBER
 }
