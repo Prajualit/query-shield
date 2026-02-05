@@ -12,6 +12,8 @@ import notificationRoutes from './routes/notification.routes';
 import organizationRoutes from './routes/organization.routes';
 import teamManagementRoutes from './routes/teamManagement.routes';
 import invitationRoutes from './routes/invitation.routes';
+import orgFirewallRoutes from './routes/orgFirewall.routes';
+import teamFirewallRoutes from './routes/teamFirewall.routes';
 
 const app = express();
 
@@ -32,6 +34,9 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/organizations', organizationRoutes);
 app.use('/api/teams', teamManagementRoutes);
 app.use('/api/invitations', invitationRoutes);
+// Organization and Team Firewall routes
+app.use('/api/org-firewalls', orgFirewallRoutes);
+app.use('/api/team-firewalls', teamFirewallRoutes);
 
 app.use((err: any, req: any, res: any, next: any) => {
   const statusCode = err.statusCode || 500;

@@ -30,6 +30,7 @@ export const createFirewall = asyncHandler(
         description,
         isActive,
         userId,
+        scope: 'PERSONAL',
       },
       include: {
         rules: true,
@@ -51,7 +52,10 @@ export const getFirewalls = asyncHandler(
     const userId = req.user!.id;
 
     const firewalls = await prisma.firewall.findMany({
-      where: { userId },
+      where: { 
+        userId,
+        scope: 'PERSONAL',
+      },
       include: {
         rules: {
           orderBy: {
