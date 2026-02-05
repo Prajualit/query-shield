@@ -76,6 +76,7 @@ model Team {
   isActive       Boolean      @default(true)
   organizationId String
   organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  firewalls      Firewall[]   @relation("TeamFirewalls")
   invites        TeamInvite[]
   members        TeamMember[]
   oldMembers     User[]
@@ -126,12 +127,16 @@ model Firewall {
   isActive       Boolean       @default(true)
   updatedAt      DateTime      @updatedAt
   organizationId String?
+  teamId         String?
+  scope          FirewallScope @default(PERSONAL)
   auditLogs      AuditLog[]
   organization   Organization? @relation("OrganizationFirewalls", fields: [organizationId], references: [id], onDelete: Cascade)
+  team           Team?         @relation("TeamFirewalls", fields: [teamId], references: [id], onDelete: Cascade)
   user           User          @relation(fields: [userId], references: [id])
   rules          Rule[]
 
   @@index([organizationId])
+  @@index([teamId])
 }
 
 model Rule {
@@ -290,4 +295,10 @@ enum NotificationSeverity {
 enum TeamRole {
   MANAGER
   MEMBER
+}
+
+enum FirewallScope {
+  PERSONAL
+  ORGANIZATION
+  TEAM
 }
