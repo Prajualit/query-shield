@@ -3,6 +3,7 @@
 import { useQuery } from "@tanstack/react-query";
 import Link from "next/link";
 import { api } from "@/lib/api";
+import { useAppSelector } from "@/store/hooks";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,10 +12,13 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Shield, Plus, Settings, Trash2 } from "lucide-react";
+import { Shield, Plus, Settings, Trash2, Building2, Users } from "lucide-react";
 import type { Firewall } from "@/lib/types";
 
 export default function FirewallsPage() {
+  const { user } = useAppSelector((state) => state.auth);
+  const isOrgMember = !!user?.organizationId;
+  
   const { data, isLoading, refetch } = useQuery({
     queryKey: ["firewalls"],
     queryFn: () => api.getFirewalls(),
@@ -52,10 +56,10 @@ export default function FirewallsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold text-neutral-900 dark:text-neutral-50">
-            Firewalls
+            Personal Firewalls
           </h1>
           <p className="mt-3 text-neutral-700 dark:text-neutral-300 text-lg font-medium">
-            Manage your AI data firewalls
+            Manage your personal AI data firewalls
           </p>
         </div>
         <Link href="/dashboard/firewalls/new">
@@ -65,6 +69,38 @@ export default function FirewallsPage() {
           </Button>
         </Link>
       </div>
+
+      {/* Org/Team Firewalls Links for Org Members */}
+      {isOrgMember && (
+        <div className="flex gap-4">
+          <Link href="/dashboard/organization/firewalls">
+            <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="flex items-center gap-3 py-4 px-5">
+                <div className="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30">
+                  <Building2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-neutral-900 dark:text-neutral-100">Organization Firewalls</p>
+                  <p className="text-xs text-neutral-500">Apply to all teams</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+          <Link href="/dashboard/teams/firewalls">
+            <Card className="bg-white dark:bg-neutral-800 border-neutral-200 dark:border-neutral-700 shadow-md hover:shadow-lg transition-shadow cursor-pointer">
+              <CardContent className="flex items-center gap-3 py-4 px-5">
+                <div className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/30">
+                  <Users className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                </div>
+                <div>
+                  <p className="font-semibold text-neutral-900 dark:text-neutral-100">Team Firewalls</p>
+                  <p className="text-xs text-neutral-500">Apply to specific teams</p>
+                </div>
+              </CardContent>
+            </Card>
+          </Link>
+        </div>
+      )}
 
       {/* Firewalls Grid */}
       {firewalls.length === 0 ? (

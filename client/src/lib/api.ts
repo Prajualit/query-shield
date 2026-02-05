@@ -578,6 +578,150 @@ class ApiClient {
     const response = await this.client.patch('/notifications/preferences', { preferences });
     return response.data;
   }
+
+  // Organization Firewalls (org-level - applies to all teams)
+  async getOrgFirewalls(organizationId: string): Promise<ApiResponse<Firewall[]>> {
+    const response = await this.client.get(`/org-firewalls/${organizationId}/firewalls`);
+    return response.data;
+  }
+
+  async createOrgFirewall(organizationId: string, data: {
+    name: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Firewall>> {
+    const response = await this.client.post(`/org-firewalls/${organizationId}/firewalls`, data);
+    return response.data;
+  }
+
+  async updateOrgFirewall(organizationId: string, firewallId: string, data: {
+    name?: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Firewall>> {
+    const response = await this.client.put(`/org-firewalls/${organizationId}/firewalls/${firewallId}`, data);
+    return response.data;
+  }
+
+  async deleteOrgFirewall(organizationId: string, firewallId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/org-firewalls/${organizationId}/firewalls/${firewallId}`);
+    return response.data;
+  }
+
+  async getOrgFirewall(organizationId: string, firewallId: string): Promise<ApiResponse<Firewall>> {
+    const response = await this.client.get(`/org-firewalls/${organizationId}/firewalls/${firewallId}`);
+    return response.data;
+  }
+
+  // Organization Firewall Rules
+  async getOrgFirewallRules(organizationId: string, firewallId: string): Promise<ApiResponse<Rule[]>> {
+    const response = await this.client.get(`/org-firewalls/${organizationId}/firewalls/${firewallId}/rules`);
+    return response.data;
+  }
+
+  async createOrgFirewallRule(organizationId: string, firewallId: string, data: {
+    name: string;
+    type: string;
+    pattern: string;
+    action?: string;
+    priority?: number;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Rule>> {
+    const response = await this.client.post(`/org-firewalls/${organizationId}/firewalls/${firewallId}/rules`, data);
+    return response.data;
+  }
+
+  async updateOrgFirewallRule(organizationId: string, firewallId: string, ruleId: string, data: {
+    name?: string;
+    type?: string;
+    pattern?: string;
+    action?: string;
+    priority?: number;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Rule>> {
+    const response = await this.client.put(`/org-firewalls/${organizationId}/firewalls/${firewallId}/rules/${ruleId}`, data);
+    return response.data;
+  }
+
+  async deleteOrgFirewallRule(organizationId: string, firewallId: string, ruleId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/org-firewalls/${organizationId}/firewalls/${firewallId}/rules/${ruleId}`);
+    return response.data;
+  }
+
+  // Team Firewalls (team-level - applies to specific team)
+  async getTeamFirewalls(teamId: string): Promise<ApiResponse<Firewall[]>> {
+    const response = await this.client.get(`/team-firewalls/${teamId}/firewalls`);
+    return response.data;
+  }
+
+  async createTeamFirewall(teamId: string, data: {
+    name: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Firewall>> {
+    const response = await this.client.post(`/team-firewalls/${teamId}/firewalls`, data);
+    return response.data;
+  }
+
+  async updateTeamFirewall(teamId: string, firewallId: string, data: {
+    name?: string;
+    description?: string;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Firewall>> {
+    const response = await this.client.put(`/team-firewalls/${teamId}/firewalls/${firewallId}`, data);
+    return response.data;
+  }
+
+  async deleteTeamFirewall(teamId: string, firewallId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/team-firewalls/${teamId}/firewalls/${firewallId}`);
+    return response.data;
+  }
+
+  async getTeamFirewall(teamId: string, firewallId: string): Promise<ApiResponse<Firewall>> {
+    const response = await this.client.get(`/team-firewalls/${teamId}/firewalls/${firewallId}`);
+    return response.data;
+  }
+
+  // Team Firewall Rules
+  async getTeamFirewallRules(teamId: string, firewallId: string): Promise<ApiResponse<Rule[]>> {
+    const response = await this.client.get(`/team-firewalls/${teamId}/firewalls/${firewallId}/rules`);
+    return response.data;
+  }
+
+  async createTeamFirewallRule(teamId: string, firewallId: string, data: {
+    name: string;
+    type: string;
+    pattern: string;
+    action?: string;
+    priority?: number;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Rule>> {
+    const response = await this.client.post(`/team-firewalls/${teamId}/firewalls/${firewallId}/rules`, data);
+    return response.data;
+  }
+
+  async updateTeamFirewallRule(teamId: string, firewallId: string, ruleId: string, data: {
+    name?: string;
+    type?: string;
+    pattern?: string;
+    action?: string;
+    priority?: number;
+    isActive?: boolean;
+  }): Promise<ApiResponse<Rule>> {
+    const response = await this.client.put(`/team-firewalls/${teamId}/firewalls/${firewallId}/rules/${ruleId}`, data);
+    return response.data;
+  }
+
+  async deleteTeamFirewallRule(teamId: string, firewallId: string, ruleId: string): Promise<ApiResponse<null>> {
+    const response = await this.client.delete(`/team-firewalls/${teamId}/firewalls/${firewallId}/rules/${ruleId}`);
+    return response.data;
+  }
+
+  // Get all applicable firewalls for user (personal + org + team)
+  async getApplicableFirewalls(): Promise<ApiResponse<Firewall[]>> {
+    const response = await this.client.get('/org-firewalls/applicable');
+    return response.data;
+  }
 }
 
 export const api = new ApiClient();

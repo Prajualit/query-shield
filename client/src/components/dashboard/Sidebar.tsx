@@ -76,7 +76,21 @@ const organizationNavigation = [
     icon: Building2,
     adminOnly: false,
   },
+  {
+    name: "Org Firewalls",
+    href: "/dashboard/organization/firewalls",
+    icon: Shield,
+    adminOnly: true,
+    description: "Organization-wide firewalls",
+  },
   { name: "Teams", href: "/dashboard/teams", icon: Users, adminOnly: false },
+  {
+    name: "Team Firewalls",
+    href: "/dashboard/teams/firewalls",
+    icon: Shield,
+    adminOnly: false,
+    description: "Team-specific firewalls",
+  },
   {
     name: "Invitations",
     href: "/dashboard/invitations",

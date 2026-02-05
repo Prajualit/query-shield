@@ -49,6 +49,9 @@ export interface Firewall {
   description: string | null;
   isActive: boolean;
   userId: string;
+  organizationId?: string | null;
+  teamId?: string | null;
+  scope: 'PERSONAL' | 'ORGANIZATION' | 'TEAM';
   createdAt: string;
   updatedAt: string;
   rules?: Rule[];
@@ -56,6 +59,19 @@ export interface Firewall {
     rules: number;
     auditLogs: number;
   };
+  user?: {
+    id: string;
+    name: string | null;
+    email: string;
+  };
+  organization?: {
+    id: string;
+    name: string;
+  } | null;
+  team?: {
+    id: string;
+    name: string;
+  } | null;
   targetUrl?: string;
   rateLimit?: number;
   sqlInjectionProtection?: boolean;
