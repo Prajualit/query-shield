@@ -344,6 +344,10 @@ export const getProxyStats = asyncHandler(async (req: Request, res: Response) =>
 /**
  * Validate text for sensitive data (for browser extension)
  * POST /api/v1/proxy/validate
+ * 
+ * If firewallId is provided, validates against that specific firewall.
+ * If firewallId is "all" or not provided, validates against ALL applicable
+ * firewalls (personal + org-level + team-level) - combining all results.
  */
 export const validateText = asyncHandler(async (req: Request, res: Response) => {
   const authReq = req as AuthRequest;
@@ -355,65 +359,151 @@ export const validateText = asyncHandler(async (req: Request, res: Response) => 
 
   const { firewallId, text } = req.body;
 
-  if (!firewallId) {
-    throw new ApiError(400, 'Firewall ID is required');
-  }
-
   if (!text || typeof text !== 'string') {
     throw new ApiError(400, 'Text is required');
   }
 
-  // Verify firewall exists and user has access
-  const firewall = await prisma.firewall.findFirst({
-    where: {
-      id: firewallId,
-      userId,
-    },
-    include: {
-      rules: true,
-    },
-  });
-
-  if (!firewall) {
-    throw new ApiError(404, 'Firewall not found or access denied');
-  }
-
-  if (!firewall.isActive) {
-    throw new ApiError(400, 'Firewall is not active');
-  }
-
-  // Use rules engine to evaluate the text
   const { rulesEngine } = await import('../services/detection/rules.engine');
-  const result = await rulesEngine.evaluateRules(text, firewallId, userId);
 
-  // Check if blocked
-  const blocked = result.blocked;
-  const sanitized = result.sanitizedText !== result.originalText;
+  // Collect all firewalls to evaluate against
+  let firewallIds: string[] = [];
 
-  // Create audit log
+  if (firewallId && firewallId !== 'all') {
+    // Specific firewall - verify user has access (personal, or org/team member)
+    const firewall = await prisma.firewall.findFirst({
+      where: {
+        id: firewallId,
+        isActive: true,
+        OR: [
+          // Personal firewall owned by user
+          { userId, scope: 'PERSONAL' },
+          // Org firewall where user is an org member
+          {
+            scope: 'ORGANIZATION',
+            organization: {
+              members: { some: { userId } },
+            },
+          },
+          // Team firewall where user is a team member
+          {
+            scope: 'TEAM',
+            team: {
+              members: { some: { userId } },
+            },
+          },
+        ],
+      },
+    });
+
+    if (!firewall) {
+      throw new ApiError(404, 'Firewall not found or access denied');
+    }
+
+    firewallIds = [firewallId];
+  } else {
+    // Get ALL applicable firewalls for this user
+    const orgMembership = await prisma.organizationMember.findFirst({
+      where: { userId },
+    });
+    const teamMemberships = await prisma.teamMember.findMany({
+      where: { userId },
+      select: { teamId: true },
+    });
+    const teamIds = teamMemberships.map((tm) => tm.teamId);
+
+    const applicableFirewalls = await prisma.firewall.findMany({
+      where: {
+        isActive: true,
+        OR: [
+          { userId, scope: 'PERSONAL' },
+          ...(orgMembership
+            ? [{ organizationId: orgMembership.organizationId, scope: 'ORGANIZATION' as const }]
+            : []),
+          ...(teamIds.length > 0
+            ? [{ teamId: { in: teamIds }, scope: 'TEAM' as const }]
+            : []),
+        ],
+      },
+      select: { id: true },
+    });
+
+    firewallIds = applicableFirewalls.map((f) => f.id);
+  }
+
+  if (firewallIds.length === 0) {
+    // No firewalls configured - allow through
+    return res.status(200).json(
+      new ApiResponse(200, {
+        blocked: false,
+        sanitized: false,
+        detections: [],
+        sanitizedText: text,
+      }, 'No firewalls configured')
+    );
+  }
+
+  // Evaluate text against all applicable firewalls and merge results
+  let combinedBlocked = false;
+  let combinedSanitizedText = text;
+  const allDetections: any[] = [];
+  const seenDetections = new Set<string>();
+
+  for (const fwId of firewallIds) {
+    try {
+      const result = await rulesEngine.evaluateRules(combinedSanitizedText, fwId, userId);
+
+      if (result.blocked) {
+        combinedBlocked = true;
+      }
+
+      // If this firewall sanitized the text, carry the sanitized version forward
+      if (result.sanitizedText !== combinedSanitizedText) {
+        combinedSanitizedText = result.sanitizedText;
+      }
+
+      // Collect unique detections
+      for (const d of result.detectedItems) {
+        const key = `${d.type}:${d.value}`;
+        if (!seenDetections.has(key)) {
+          seenDetections.add(key);
+          allDetections.push({
+            type: d.type,
+            value: d.value,
+            confidence: d.confidence,
+            description: d.description,
+          });
+        }
+      }
+    } catch (err) {
+      // If one firewall evaluation fails, continue with others
+      console.error(`Firewall ${fwId} evaluation failed:`, err);
+    }
+  }
+
+  const sanitized = combinedSanitizedText !== text;
+
+  // Create a single audit log entry for the combined result
   await prisma.auditLog.create({
     data: {
       userId,
-      firewallId,
+      firewallId: firewallIds[0], // Primary firewall
       inputText: text,
-      sanitizedText: result.sanitizedText,
-      detectedIssues: JSON.parse(JSON.stringify(result.detectedItems)),
-      action: blocked ? 'BLOCKED' : sanitized ? 'SANITIZED' : 'ALLOWED',
+      sanitizedText: combinedSanitizedText,
+      detectedIssues: JSON.parse(JSON.stringify(allDetections)),
+      action: combinedBlocked ? 'BLOCKED' : sanitized ? 'SANITIZED' : 'ALLOWED',
       aiProvider: 'BROWSER_EXTENSION',
+      metadata: JSON.parse(JSON.stringify({
+        evaluatedFirewalls: firewallIds,
+        totalDetections: allDetections.length,
+      })),
     },
   });
 
-  // Return validation result
   const response = {
-    blocked: blocked,
+    blocked: combinedBlocked,
     sanitized: sanitized,
-    detections: result.detectedItems.map((d: any) => ({
-      type: d.type,
-      value: d.value,
-      confidence: d.confidence,
-      description: d.description,
-    })),
-    sanitizedText: result.sanitizedText,
+    detections: allDetections,
+    sanitizedText: combinedSanitizedText,
   };
 
   res.status(200).json(
