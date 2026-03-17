@@ -10,16 +10,149 @@ import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
 
+const normalizeQueryParam = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const buildAuditAccessFilter = async (
+  req: AuthRequest,
+  organizationIdParam: unknown,
+  teamIdParam: unknown
+): Promise<any> => {
+  const userId = req.user!.id;
+  const requestedOrganizationId = normalizeQueryParam(organizationIdParam);
+  const requestedTeamId = normalizeQueryParam(teamIdParam);
+  const effectiveOrganizationId = requestedOrganizationId || req.user?.organizationId;
+
+  if (!effectiveOrganizationId) {
+    return { userId };
+  }
+
+  const membership = await prisma.organizationMember.findUnique({
+    where: {
+      userId_organizationId: {
+        userId,
+        organizationId: effectiveOrganizationId,
+      },
+    },
+  });
+
+  if (!membership) {
+    if (requestedOrganizationId) {
+      throw new ApiError(403, 'You are not a member of this organization');
+    }
+    return { userId };
+  }
+
+  if (membership.role === 'ADMIN') {
+    if (requestedTeamId) {
+      const team = await prisma.team.findFirst({
+        where: {
+          id: requestedTeamId,
+          organizationId: effectiveOrganizationId,
+        },
+        select: {
+          id: true,
+        },
+      });
+
+      if (!team) {
+        throw new ApiError(403, 'Team not found in your organization');
+      }
+
+      const teamMembers = await prisma.teamMember.findMany({
+        where: {
+          teamId: team.id,
+        },
+        select: {
+          userId: true,
+        },
+      });
+
+      return {
+        userId: {
+          in: Array.from(new Set(teamMembers.map((member) => member.userId))),
+        },
+      };
+    }
+
+    const orgMembers = await prisma.organizationMember.findMany({
+      where: {
+        organizationId: effectiveOrganizationId,
+      },
+      select: {
+        userId: true,
+      },
+    });
+
+    return {
+      userId: {
+        in: Array.from(new Set(orgMembers.map((member) => member.userId))),
+      },
+    };
+  }
+
+  const managerMemberships = await prisma.teamMember.findMany({
+    where: {
+      userId,
+      role: 'MANAGER',
+      team: {
+        organizationId: effectiveOrganizationId,
+      },
+      ...(requestedTeamId ? { teamId: requestedTeamId } : {}),
+    },
+    select: {
+      teamId: true,
+    },
+  });
+
+  const managedTeamIds = Array.from(new Set(managerMemberships.map((membershipItem) => membershipItem.teamId)));
+
+  if (requestedTeamId && managedTeamIds.length === 0) {
+    throw new ApiError(403, 'You can only access teams you manage');
+  }
+
+  if (managedTeamIds.length === 0) {
+    return { userId };
+  }
+
+  const teamMembers = await prisma.teamMember.findMany({
+    where: {
+      teamId: {
+        in: managedTeamIds,
+      },
+    },
+    select: {
+      userId: true,
+    },
+  });
+
+  return {
+    userId: {
+      in: Array.from(new Set(teamMembers.map((member) => member.userId))),
+    },
+  };
+};
+
 /**
  * Get all audit logs for the authenticated user with pagination and filters
- * For organization admins: can see all organization activity
- * For members: can only see their own activity
+ * 
+ * Role-based access:
+ * - Org Admin: can see ALL audit logs across the entire organization (all teams, all users)
+ * - Team Manager: can see audit logs of their own team members only
+ * - Member: can only see their own audit logs
+ * - Individual (no org): can only see their own audit logs
+ * 
  * GET /api/audit-logs
- * Query params: page, limit, firewallId, action, startDate, endDate, search, organizationId
+ * Query params: page, limit, firewallId, action, startDate, endDate, search, organizationId, teamId
  */
 export const getAuditLogs = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user!.id;
     const {
       page = '1',
       limit = '20',
@@ -29,47 +162,14 @@ export const getAuditLogs = asyncHandler(
       endDate,
       search,
       organizationId,
+      teamId,
     } = req.query;
 
     const pageNum = parseInt(page as string);
     const limitNum = parseInt(limit as string);
     const skip = (pageNum - 1) * limitNum;
 
-    // Build where clause
-    let where: any = {};
-
-    // Determine access level
-    if (req.user?.accountType === 'ORGANIZATION' && organizationId) {
-      // Check organization membership and role
-      const membership = await prisma.organizationMember.findUnique({
-        where: {
-          userId_organizationId: {
-            userId,
-            organizationId: organizationId as string,
-          },
-        },
-      });
-
-      if (!membership) {
-        throw new ApiError(403, 'You are not a member of this organization');
-      }
-
-      if (membership.role === 'ADMIN') {
-        // Admin: See all logs for the organization
-        where.firewall = {
-          organizationId: organizationId as string,
-        };
-      } else {
-        // Member: Only see own logs within the organization
-        where.userId = userId;
-        where.firewall = {
-          organizationId: organizationId as string,
-        };
-      }
-    } else {
-      // Individual account or no organization specified: only own logs
-      where.userId = userId;
-    }
+    const where: any = await buildAuditAccessFilter(req, organizationId, teamId);
 
     if (firewallId) {
       where.firewallId = firewallId;
@@ -90,10 +190,14 @@ export const getAuditLogs = asyncHandler(
     }
 
     if (search) {
-      where.OR = [
-        { inputText: { contains: search as string, mode: 'insensitive' } },
-        { sanitizedText: { contains: search as string, mode: 'insensitive' } },
-      ];
+      const searchClause = {
+        OR: [
+          { inputText: { contains: search as string, mode: 'insensitive' } },
+          { sanitizedText: { contains: search as string, mode: 'insensitive' } },
+        ],
+      };
+
+      where.AND = where.AND ? [...where.AND, searchClause] : [searchClause];
     }
 
     // Get total count for pagination
@@ -222,11 +326,10 @@ export const cleanupOldLogs = asyncHandler(
  */
 export const exportAuditLogs = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user!.id;
-    const { firewallId, action, startDate, endDate } = req.query;
+    const { firewallId, action, startDate, endDate, organizationId, teamId } = req.query;
 
     // Build where clause
-    const where: any = { userId };
+    const where: any = await buildAuditAccessFilter(req, organizationId, teamId);
 
     if (firewallId) {
       where.firewallId = firewallId;
