@@ -16,7 +16,7 @@ export default function AuditLogsPage() {
   const [search, setSearch] = useState("");
   const [action, setAction] = useState("");
 
-  const isOrgAccount = user?.accountType === "ORGANIZATION";
+  const isOrgMember = !!user?.organizationId;
   const isAdmin = user?.orgRole === "ADMIN";
   const organizationId = typeof window !== "undefined" ? localStorage.getItem("currentOrgId") : null;
 
@@ -27,7 +27,7 @@ export default function AuditLogsPage() {
       limit: 20, 
       search, 
       action,
-      // Backend handles visibility based on user role
+      ...(organizationId ? { organizationId } : {}),
     }),
   });
 
@@ -36,7 +36,10 @@ export default function AuditLogsPage() {
 
   const handleExport = async () => {
     try {
-      const blob = await api.exportAuditLogs({ action });
+      const blob = await api.exportAuditLogs({
+        action,
+        ...(organizationId ? { organizationId } : {}),
+      });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -72,15 +75,15 @@ export default function AuditLogsPage() {
             Audit Logs
           </h1>
           <p className="mt-3 text-neutral-700 dark:text-neutral-300 text-lg font-medium">
-            {isOrgAccount && isAdmin 
+            {isOrgMember && isAdmin 
               ? "View all organization firewall activity" 
-              : isOrgAccount 
+              : isOrgMember 
                 ? "View your firewall activity"
                 : "View all firewall activity"}
           </p>
         </div>
         <div className="flex items-center gap-3">
-          {isOrgAccount && (
+          {isOrgMember && (
             <div className="flex items-center gap-2 px-3 py-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
               <Eye className="h-4 w-4 text-amber-600 dark:text-amber-400" />
               <span className="text-sm font-medium text-amber-700 dark:text-amber-300">
