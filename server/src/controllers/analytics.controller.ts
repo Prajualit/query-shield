@@ -6,17 +6,179 @@
 import { Response, NextFunction } from 'express';
 import { prisma } from '../db';
 import { AuthRequest } from '../types';
+import { ApiError } from '../utils/apiError';
 import { ApiResponse } from '../utils/apiResponse';
 import { asyncHandler } from '../utils/asyncHandler';
 
+const normalizeQueryParam = (value: unknown): string | undefined => {
+  if (typeof value !== 'string') {
+    return undefined;
+  }
+
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed : undefined;
+};
+
+const buildAnalyticsScopeFilters = async (
+  req: AuthRequest,
+  organizationIdParam: unknown,
+  teamIdParam: unknown
+): Promise<{ userFilter: any; firewallFilter: any }> => {
+  const userId = req.user!.id;
+  const requestedOrganizationId = normalizeQueryParam(organizationIdParam);
+  const requestedTeamId = normalizeQueryParam(teamIdParam);
+  const effectiveOrganizationId = requestedOrganizationId || req.user?.organizationId;
+
+  let userIds: string[] = [userId];
+  let teamIds: string[] = [];
+  let includeOrganizationFirewalls = false;
+
+  if (effectiveOrganizationId) {
+    const membership = await prisma.organizationMember.findUnique({
+      where: {
+        userId_organizationId: {
+          userId,
+          organizationId: effectiveOrganizationId,
+        },
+      },
+    });
+
+    if (!membership) {
+      if (requestedOrganizationId) {
+        throw new ApiError(403, 'You are not a member of this organization');
+      }
+    } else if (membership.role === 'ADMIN') {
+      if (requestedTeamId) {
+        const team = await prisma.team.findFirst({
+          where: {
+            id: requestedTeamId,
+            organizationId: effectiveOrganizationId,
+          },
+          select: {
+            id: true,
+          },
+        });
+
+        if (!team) {
+          throw new ApiError(403, 'Team not found in your organization');
+        }
+
+        teamIds = [team.id];
+
+        const teamMembers = await prisma.teamMember.findMany({
+          where: {
+            teamId: team.id,
+          },
+          select: {
+            userId: true,
+          },
+        });
+
+        userIds = Array.from(new Set(teamMembers.map((member) => member.userId)));
+      } else {
+        const orgMembers = await prisma.organizationMember.findMany({
+          where: {
+            organizationId: effectiveOrganizationId,
+          },
+          select: {
+            userId: true,
+          },
+        });
+
+        userIds = Array.from(new Set(orgMembers.map((member) => member.userId)));
+        includeOrganizationFirewalls = true;
+      }
+    } else {
+      const managerMemberships = await prisma.teamMember.findMany({
+        where: {
+          userId,
+          role: 'MANAGER',
+          team: {
+            organizationId: effectiveOrganizationId,
+          },
+          ...(requestedTeamId ? { teamId: requestedTeamId } : {}),
+        },
+        select: {
+          teamId: true,
+        },
+      });
+
+      teamIds = Array.from(new Set(managerMemberships.map((membershipItem) => membershipItem.teamId)));
+
+      if (requestedTeamId && teamIds.length === 0) {
+        throw new ApiError(403, 'You can only access teams you manage');
+      }
+
+      if (teamIds.length > 0) {
+        const teamMembers = await prisma.teamMember.findMany({
+          where: {
+            teamId: {
+              in: teamIds,
+            },
+          },
+          select: {
+            userId: true,
+          },
+        });
+
+        userIds = Array.from(new Set(teamMembers.map((member) => member.userId)));
+      }
+    }
+  }
+
+  const userFilter = {
+    userId: {
+      in: userIds,
+    },
+  };
+
+  const firewallFilters: any[] = [
+    {
+      userId: {
+        in: userIds,
+      },
+    },
+  ];
+
+  if (teamIds.length > 0) {
+    firewallFilters.push({
+      teamId: {
+        in: teamIds,
+      },
+    });
+  }
+
+  if (includeOrganizationFirewalls && effectiveOrganizationId) {
+    firewallFilters.push({
+      organizationId: effectiveOrganizationId,
+    });
+  }
+
+  const firewallFilter = firewallFilters.length === 1
+    ? firewallFilters[0]
+    : { OR: firewallFilters };
+
+  return {
+    userFilter,
+    firewallFilter,
+  };
+};
+
 /**
  * Get dashboard statistics
+ * 
+ * Role-based:
+ * - Org Admin: sees all org stats (all teams, all members)
+ * - Team Manager: sees stats for their team members
+ * - Member: sees only their own stats
+ * - Individual: sees only their own stats
+ * 
  * GET /api/analytics/dashboard
+ * Query params: startDate, endDate, organizationId, teamId
  */
 export const getDashboardStats = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user!.id;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, organizationId, teamId } = req.query;
 
     // Build date filter
     const dateFilter: any = {};
@@ -26,6 +188,12 @@ export const getDashboardStats = asyncHandler(
     if (endDate) {
       dateFilter.lte = new Date(endDate as string);
     }
+
+    const { userFilter, firewallFilter } = await buildAnalyticsScopeFilters(
+      req,
+      organizationId,
+      teamId
+    );
 
     // Get counts
     const [
@@ -37,16 +205,16 @@ export const getDashboardStats = asyncHandler(
       sanitizedRequests,
       allowedRequests,
     ] = await Promise.all([
-      prisma.firewall.count({ where: { userId } }),
-      prisma.firewall.count({ where: { userId, isActive: true } }),
+      prisma.firewall.count({ where: firewallFilter }),
+      prisma.firewall.count({ where: { ...firewallFilter, isActive: true } }),
       prisma.rule.count({
         where: {
-          firewall: { userId },
+          firewall: firewallFilter,
         },
       }),
       prisma.auditLog.count({
         where: {
-          userId,
+          ...userFilter,
           ...(Object.keys(dateFilter).length > 0 && {
             createdAt: dateFilter,
           }),
@@ -54,7 +222,7 @@ export const getDashboardStats = asyncHandler(
       }),
       prisma.auditLog.count({
         where: {
-          userId,
+          ...userFilter,
           action: 'BLOCKED',
           ...(Object.keys(dateFilter).length > 0 && {
             createdAt: dateFilter,
@@ -63,8 +231,8 @@ export const getDashboardStats = asyncHandler(
       }),
       prisma.auditLog.count({
         where: {
-          userId,
-          action: 'REDACTED',
+          ...userFilter,
+          action: { in: ['REDACTED', 'SANITIZED'] },
           ...(Object.keys(dateFilter).length > 0 && {
             createdAt: dateFilter,
           }),
@@ -72,7 +240,7 @@ export const getDashboardStats = asyncHandler(
       }),
       prisma.auditLog.count({
         where: {
-          userId,
+          ...userFilter,
           action: 'ALLOWED',
           ...(Object.keys(dateFilter).length > 0 && {
             createdAt: dateFilter,
@@ -84,7 +252,7 @@ export const getDashboardStats = asyncHandler(
     // Get detection type breakdown
     const recentLogs = await prisma.auditLog.findMany({
       where: {
-        userId,
+        ...userFilter,
         ...(Object.keys(dateFilter).length > 0 && {
           createdAt: dateFilter,
         }),
@@ -133,19 +301,22 @@ export const getDashboardStats = asyncHandler(
 /**
  * Get request timeline data for charts
  * GET /api/analytics/timeline
+ * Query params: days, firewallId, organizationId, teamId
  */
 export const getTimeline = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user!.id;
-    const { days = '30', firewallId } = req.query;
+    const { days = '30', firewallId, organizationId, teamId } = req.query;
 
-    const daysNum = parseInt(days as string);
+    const parsedDays = parseInt(days as string, 10);
+    const daysNum = Number.isNaN(parsedDays) ? 30 : parsedDays;
     const startDate = new Date();
     startDate.setDate(startDate.getDate() - daysNum);
 
+    const { userFilter } = await buildAnalyticsScopeFilters(req, organizationId, teamId);
+
     // Build where clause
     const where: any = {
-      userId,
+      ...userFilter,
       createdAt: {
         gte: startDate,
       },
@@ -185,7 +356,7 @@ export const getTimeline = asyncHandler(
       timeline[date].total++;
       if (log.action === 'BLOCKED') {
         timeline[date].blocked++;
-      } else if (log.action === 'REDACTED') {
+      } else if (log.action === 'REDACTED' || log.action === 'SANITIZED') {
         timeline[date].sanitized++;
       } else if (log.action === 'ALLOWED') {
         timeline[date].allowed++;
@@ -207,11 +378,11 @@ export const getTimeline = asyncHandler(
 /**
  * Get top detected patterns
  * GET /api/analytics/patterns
+ * Query params: limit, startDate, endDate, organizationId, teamId
  */
 export const getTopPatterns = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user!.id;
-    const { limit = '10', startDate, endDate } = req.query;
+    const { limit = '10', startDate, endDate, organizationId, teamId } = req.query;
 
     const limitNum = parseInt(limit as string);
 
@@ -224,10 +395,12 @@ export const getTopPatterns = asyncHandler(
       dateFilter.lte = new Date(endDate as string);
     }
 
+    const { userFilter } = await buildAnalyticsScopeFilters(req, organizationId, teamId);
+
     // Get recent logs
     const logs = await prisma.auditLog.findMany({
       where: {
-        userId,
+        ...userFilter,
         ...(Object.keys(dateFilter).length > 0 && {
           createdAt: dateFilter,
         }),
@@ -264,11 +437,11 @@ export const getTopPatterns = asyncHandler(
 /**
  * Get firewall performance metrics
  * GET /api/analytics/firewall-performance
+ * Query params: startDate, endDate, organizationId, teamId
  */
 export const getFirewallPerformance = asyncHandler(
   async (req: AuthRequest, res: Response, next: NextFunction) => {
-    const userId = req.user!.id;
-    const { startDate, endDate } = req.query;
+    const { startDate, endDate, organizationId, teamId } = req.query;
 
     // Build date filter
     const dateFilter: any = {};
@@ -279,9 +452,11 @@ export const getFirewallPerformance = asyncHandler(
       dateFilter.lte = new Date(endDate as string);
     }
 
-    // Get all user firewalls
+    const { firewallFilter } = await buildAnalyticsScopeFilters(req, organizationId, teamId);
+
+    // Get firewalls
     const firewalls = await prisma.firewall.findMany({
-      where: { userId },
+      where: firewallFilter,
       include: {
         _count: {
           select: {
