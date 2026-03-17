@@ -40,12 +40,8 @@ async function handleValidateText(text) {
       };
     }
     
-    if (!firewallId) {
-      return {
-        success: false,
-        error: 'No firewall selected. Please select a firewall in the extension.',
-      };
-    }
+    // If no firewall is selected, use 'all' to check all applicable firewalls
+    const effectiveFirewallId = firewallId || 'all';
     
     // Call QueryShield API to validate text
     const response = await fetch(`${CONFIG.API_BASE_URL}/proxy/validate`, {
@@ -55,7 +51,7 @@ async function handleValidateText(text) {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        firewallId: firewallId,
+        firewallId: effectiveFirewallId,
         text: text,
       }),
     });

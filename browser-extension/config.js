@@ -4,6 +4,7 @@ const CONFIG = {
   ENDPOINTS: {
     LOGIN: '/auth/login',
     FIREWALLS: '/firewalls',
+    APPLICABLE_FIREWALLS: '/org-firewalls/applicable',
     VALIDATE: '/proxy/validate',
   },
   DEFAULT_SETTINGS: {

@@ -139,23 +139,34 @@ async function loadFirewalls() {
       CONFIG.STORAGE_KEYS.ACCESS_TOKEN
     );
     
-    const response = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.FIREWALLS}`, {
-      headers: {
-        'Authorization': `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-    });
+    // Try to load all applicable firewalls (personal + org + team)
+    let firewalls = [];
+    try {
+      const applicableRes = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.APPLICABLE_FIREWALLS}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (applicableRes.ok) {
+        const applicableData = await applicableRes.json();
+        firewalls = applicableData.data || [];
+      }
+    } catch (_) { /* fallback below */ }
+
+    // Fallback to personal firewalls if applicable endpoint not available
+    if (firewalls.length === 0) {
+      const personalRes = await fetch(`${CONFIG.API_BASE_URL}${CONFIG.ENDPOINTS.FIREWALLS}`, {
+        headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      });
+      if (!personalRes.ok) throw new Error('Failed to load firewalls');
+      const personalData = await personalRes.json();
+      firewalls = personalData.data || [];
+    }
     
-    if (!response.ok) throw new Error('Failed to load firewalls');
-    
-    const data = await response.json();
-    const firewalls = data.data;
-    
-    select.innerHTML = '<option value="">Select a firewall...</option>';
+    select.innerHTML = '<option value="all">All Applicable Firewalls</option>';
     firewalls.forEach(firewall => {
       const option = document.createElement('option');
       option.value = firewall.id;
-      option.textContent = `${firewall.name}${firewall.isActive ? '' : ' (Inactive)'}`;
+      const scopeLabel = firewall.scope === 'ORGANIZATION' ? ' [Org]' : firewall.scope === 'TEAM' ? ' [Team]' : '';
+      option.textContent = `${firewall.name}${scopeLabel}${firewall.isActive ? '' : ' (Inactive)'}`;
       select.appendChild(option);
     });
     
