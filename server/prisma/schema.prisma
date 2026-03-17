@@ -5,7 +5,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 model User {
@@ -75,8 +74,8 @@ model Team {
   description    String?
   isActive       Boolean      @default(true)
   organizationId String
-  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   firewalls      Firewall[]   @relation("TeamFirewalls")
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   invites        TeamInvite[]
   members        TeamMember[]
   oldMembers     User[]
@@ -88,8 +87,8 @@ model TeamMember {
   id       String   @id @default(uuid())
   userId   String
   teamId   String
-  role     TeamRole @default(MEMBER)
   joinedAt DateTime @default(now())
+  role     TeamRole @default(MEMBER)
   team     Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -127,8 +126,8 @@ model Firewall {
   isActive       Boolean       @default(true)
   updatedAt      DateTime      @updatedAt
   organizationId String?
-  teamId         String?
   scope          FirewallScope @default(PERSONAL)
+  teamId         String?
   auditLogs      AuditLog[]
   organization   Organization? @relation("OrganizationFirewalls", fields: [organizationId], references: [id], onDelete: Cascade)
   team           Team?         @relation("TeamFirewalls", fields: [teamId], references: [id], onDelete: Cascade)
