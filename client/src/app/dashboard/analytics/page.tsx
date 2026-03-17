@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '@/lib/api';
+import { useAppSelector } from '@/store/hooks';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
@@ -36,20 +37,23 @@ const ACTION_COLORS = {
 
 export default function AnalyticsPage() {
   const [timeRange, setTimeRange] = useState<'7d' | '30d' | '90d'>('7d');
+  const { user } = useAppSelector((state) => state.auth);
+  const isAdmin = user?.orgRole === 'ADMIN';
+  const orgParams = isAdmin && user?.organizationId ? { organizationId: user.organizationId } : {};
 
   const { data: stats } = useQuery({
-    queryKey: ['analytics-stats', timeRange],
-    queryFn: () => api.getDashboardStats(),
+    queryKey: ['analytics-stats', timeRange, user?.organizationId, isAdmin],
+    queryFn: () => api.getDashboardStats(orgParams),
   });
 
   const { data: timeline } = useQuery({
-    queryKey: ['analytics-timeline', timeRange],
-    queryFn: () => api.getTimeline({ days: timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90 }),
+    queryKey: ['analytics-timeline', timeRange, user?.organizationId, isAdmin],
+    queryFn: () => api.getTimeline({ days: timeRange === '7d' ? 7 : timeRange === '30d' ? 30 : 90, ...orgParams }),
   });
 
   const { data: patterns } = useQuery({
-    queryKey: ['analytics-patterns'],
-    queryFn: () => api.getTopPatterns({ limit: 10 }),
+    queryKey: ['analytics-patterns', user?.organizationId, isAdmin],
+    queryFn: () => api.getTopPatterns({ limit: 10, ...orgParams }),
   });
 
   const dashboardStats = stats?.data;

@@ -38,18 +38,26 @@ export default function DashboardPage() {
   const isAdmin = user?.orgRole === "ADMIN";
 
   const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ["dashboard-stats"],
-    queryFn: () => api.getDashboardStats(),
+    queryKey: ["dashboard-stats", user?.organizationId, isAdmin],
+    queryFn: () => api.getDashboardStats(
+      isAdmin && user?.organizationId ? { organizationId: user.organizationId } : undefined
+    ),
   });
 
   const { data: timeline, isLoading: timelineLoading } = useQuery({
-    queryKey: ["timeline"],
-    queryFn: () => api.getTimeline({ days: 7 }),
+    queryKey: ["timeline", user?.organizationId, isAdmin],
+    queryFn: () => api.getTimeline({
+      days: 7,
+      ...(isAdmin && user?.organizationId ? { organizationId: user.organizationId } : {}),
+    }),
   });
 
   const { data: patterns, isLoading: patternsLoading } = useQuery({
-    queryKey: ["patterns"],
-    queryFn: () => api.getTopPatterns({ limit: 5 }),
+    queryKey: ["patterns", user?.organizationId, isAdmin],
+    queryFn: () => api.getTopPatterns({
+      limit: 5,
+      ...(isAdmin && user?.organizationId ? { organizationId: user.organizationId } : {}),
+    }),
   });
 
   if (statsLoading) {
