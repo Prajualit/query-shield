@@ -217,6 +217,8 @@ class ApiClient {
     startDate?: string;
     endDate?: string;
     search?: string;
+    organizationId?: string;
+    teamId?: string;
   }): Promise<PaginatedResponse<AuditLog>> {
     const response = await this.client.get('/audit-logs', { params });
     return response.data;
@@ -232,6 +234,8 @@ class ApiClient {
     action?: string;
     startDate?: string;
     endDate?: string;
+    organizationId?: string;
+    teamId?: string;
   }): Promise<Blob> {
     const response = await this.client.get('/audit-logs/export', {
       params,
@@ -244,6 +248,8 @@ class ApiClient {
   async getDashboardStats(params?: {
     startDate?: string;
     endDate?: string;
+    organizationId?: string;
+    teamId?: string;
   }): Promise<ApiResponse<DashboardStats>> {
     const response = await this.client.get('/analytics/dashboard', { params });
     return response.data;
@@ -252,6 +258,8 @@ class ApiClient {
   async getTimeline(params?: {
     days?: number;
     firewallId?: string;
+    organizationId?: string;
+    teamId?: string;
   }): Promise<ApiResponse<TimelineData[]>> {
     const response = await this.client.get('/analytics/timeline', { params });
     return response.data;
@@ -261,6 +269,8 @@ class ApiClient {
     limit?: number;
     startDate?: string;
     endDate?: string;
+    organizationId?: string;
+    teamId?: string;
   }): Promise<ApiResponse<Pattern[]>> {
     const response = await this.client.get('/analytics/patterns', { params });
     return response.data;
@@ -269,6 +279,8 @@ class ApiClient {
   async getFirewallPerformance(params?: {
     startDate?: string;
     endDate?: string;
+    organizationId?: string;
+    teamId?: string;
   }): Promise<ApiResponse<FirewallPerformance[]>> {
     const response = await this.client.get('/analytics/firewall-performance', { params });
     return response.data;
