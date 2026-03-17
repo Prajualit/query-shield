@@ -42,10 +42,15 @@ export default function InvitationsPage() {
       if (response.success) {
         setInvitations(response.data || []);
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("Failed to fetch invitations:", err);
-      console.error("Error response:", err.response?.data);
-      setError(err.response?.data?.message || "Failed to load invitations");
+
+      const errorWithResponse = err as {
+        response?: { data?: { message?: string } };
+      };
+
+      console.error("Error response:", errorWithResponse.response?.data);
+      setError(errorWithResponse.response?.data?.message || "Failed to load invitations");
     } finally {
       setLoading(false);
     }
