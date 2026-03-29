@@ -52,7 +52,7 @@ export default function AuditLogsPage() {
       console.error("Export failed:", error);
     }
   };
-
+  
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-full">

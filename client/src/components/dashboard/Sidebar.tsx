@@ -24,6 +24,7 @@ import {
   FolderOpen,
   Building2,
   UserPlus,
+  ChevronDown,
 } from "lucide-react";
 
 // Navigation items with role restrictions
@@ -72,24 +73,29 @@ const navigation = [
 const organizationNavigation = [
   {
     name: "Organization",
-    href: "/dashboard/organization",
     icon: Building2,
     adminOnly: false,
+    children: [
+      { name: "Overview", href: "/dashboard/organization", adminOnly: false },
+      {
+        name: "Org Firewalls",
+        href: "/dashboard/organization/firewalls",
+        adminOnly: true,
+      },
+    ],
   },
-  {
-    name: "Org Firewalls",
-    href: "/dashboard/organization/firewalls",
-    icon: Shield,
-    adminOnly: true,
-    description: "Organization-wide firewalls",
-  },
-  { name: "Teams", href: "/dashboard/teams", icon: Users, adminOnly: false },
-  {
-    name: "Team Firewalls",
-    href: "/dashboard/teams/firewalls",
-    icon: Shield,
+  { 
+    name: "Teams", 
+    icon: Users, 
     adminOnly: false,
-    description: "Team-specific firewalls",
+    children: [
+      { name: "Overview", href: "/dashboard/teams", adminOnly: false },
+      {
+        name: "Team Firewalls",
+        href: "/dashboard/teams/firewalls",
+        adminOnly: false,
+      },
+    ],
   },
   {
     name: "Invitations",
@@ -203,6 +209,78 @@ export function Sidebar() {
     );
   };
 
+  const NavDropdown = ({
+    item,
+  }: {
+    item: {
+      name: string;
+      icon: React.ElementType;
+      children: { name: string; href: string; adminOnly?: boolean }[];
+    };
+  }) => {
+    // Check if any child route is active
+    const isChildActive = item.children.some((child) =>
+      pathname === child.href ||
+      (pathname.startsWith(child.href + "/") && child.href !== "/dashboard")
+    );
+    const [isOpen, setIsOpen] = useState(isChildActive);
+    
+    // Update open state if a child becomes active
+    useEffect(() => {
+      if (isChildActive) setIsOpen(true);
+    }, [isChildActive]);
+
+    return (
+      <div className="space-y-1">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "flex w-full items-center justify-between rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200",
+            isOpen || isChildActive
+              ? "text-white bg-neutral-800/50"
+              : "text-neutral-400 hover:bg-neutral-800 hover:text-white"
+          )}
+        >
+          <div className="flex items-center gap-3">
+            <item.icon className="h-4 w-4" />
+            {item.name}
+          </div>
+          <ChevronDown
+            className={cn("h-4 w-4 transition-transform duration-200 text-neutral-500", {
+              "rotate-180": isOpen,
+            })}
+          />
+        </button>
+
+        {isOpen && (
+          <div className="ml-[22px] border-l border-neutral-700/50 pl-4 py-1 space-y-1">
+            {item.children.map((child) => {
+              if (child.adminOnly && !isAdmin) return null;
+              
+              const isChildRouteActive =
+                pathname === child.href;
+                
+              return (
+                <Link
+                  key={child.name}
+                  href={child.href}
+                  className={cn(
+                    "block rounded-lg px-3 py-2 text-sm font-medium transition-all duration-200",
+                    isChildRouteActive
+                      ? "bg-neutral-800 text-amber-500 font-semibold"
+                      : "text-neutral-400 hover:bg-neutral-800/50 hover:text-white"
+                  )}
+                >
+                  {child.name}
+                </Link>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="flex h-full w-64 flex-col bg-linear-to-b from-neutral-900 via-neutral-900 to-neutral-800 text-white shadow-2xl overflow-hidden">
       {/* Logo */}
@@ -238,7 +316,12 @@ export function Sidebar() {
             {organizationNavigation.map((item) => {
               // Hide admin-only items from non-admins
               if (item.adminOnly && !isAdmin) return null;
-              return <NavLink key={item.name} item={item} />;
+              if (item.children) {
+                return (
+                  <NavDropdown key={item.name} item={item as { name: string; icon: React.ElementType; children: { name: string; href: string; adminOnly?: boolean }[] }} />
+                );
+              }
+              return <NavLink key={item.name} item={item as { name: string; href: string; icon: React.ElementType }} />;
             })}
           </div>
         )}

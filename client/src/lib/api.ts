@@ -473,7 +473,7 @@ class ApiClient {
     const response = await this.client.post(`/invitations/${invitationId}/resend`);
     return response.data;
   }
-  async acceptInvitationByToken(token: string): Promise<ApiResponse<any>> {
+  async acceptInvitationByToken(token: string): Promise<ApiResponse<unknown>> {
     const response = await this.client.post('/invitations/accept', { token });
     return response.data;
   }
