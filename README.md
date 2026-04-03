@@ -6,97 +6,103 @@
 [![Express](https://img.shields.io/badge/Express-000000?logo=express&logoColor=white)](https://expressjs.com/)
 [![Prisma](https://img.shields.io/badge/Prisma-2D3748?logo=prisma&logoColor=white)](https://www.prisma.io/)
 
-**Stop data leaks before they happen.**  
-QueryShield is an AI Data Firewall that automatically detects and masks sensitive information before it reaches AI models like ChatGPT, Claude, or Gemini.
+> **Stop data leaks to AI models before they happen.**
+
+QueryShield is an enterprise-grade, real-time AI Data Firewall that automatically detects and masks, redacts, or blocks sensitive information (PII, credentials, IP, PHI) before it ever reaches Generative AI platforms like ChatGPT, Claude, and Google Gemini.
 
 ---
 
-## 🎯 Problem
+## 🌟 Key Features
 
-Organizations increasingly use AI tools for productivity, but:
-
-- ❌ Employees unknowingly share sensitive data (PII, credentials, IP)
-- ❌ No visibility into what data is sent to AI providers
-- ❌ Compliance risks (GDPR, HIPAA, SOC2)
-- ❌ Existing DLP solutions are expensive and complex
-
-## 💡 Solution
-
-QueryShield is a lightweight SaaS middleware that:
-
-- ✅ Detects sensitive data patterns automatically
-- ✅ Masks or redacts information in real-time
-- ✅ Logs all AI interactions for compliance
-- ✅ Works across multiple AI providers
-- ✅ Easy integration (API, SDK, Browser Extension)
+- **Real-Time Browser Protection**: A dedicated browser extension that intercepts and sanitizes queries directly on the web interfaces of ChatGPT, Claude.ai, and Gemini.
+- **Advanced Pattern Detection**: Automatically detects Emails, Phone Numbers, SSNs, Credit Cards, API Keys, and custom regex patterns.
+- **Enterprise B2B Ready (RBAC)**: Comprehensive Organization and Team management. Hierarchical Role-Based Access Control (Admin, Member) to manage firewall rules across the company.
+- **Sanitization Modes**: Choose between *Redact* (replace with `[REDACTED]`), *Mask* (partially hide, e.g., `****-1234`), or *Block* (prevent the query entirely) for each data type.
+- **Comprehensive Audit Logging**: Complete visibility into what data was blocked or sanitized across your entire organization for compliance and security (SOC2, GDPR, HIPAA).
+- **Modern Full-Stack Architecture**: Next.js client dashboard, Express/Prisma backend, and native browser extensions.
 
 ---
 
-## 🚀 Quick Start
+## 🏗️ Architecture
 
-**Get your first working features in 2 hours:**
+The QueryShield ecosystem consists of three main components:
 
+1. **[Client (`/client`)](./client/)**: A modern Next.js (React) web dashboard for managing organizations, teams, firewall rules, and viewing audit logs.
+2. **[Server (`/server`)](./server/)**: A robust Node.js/Express REST API powered by PostgreSQL and Prisma, handling RBAC, pattern matching, authentication, and logging.
+3. **[Browser Extension (`/browser-extension`)](./browser-extension/)**: A Chrome/Edge extension that injects into AI chatbot web interfaces to provide real-time protection.
+
+---
+
+## 🚀 Quick Start Guide
+
+### Prerequisites
+- Node.js (v18+)
+- PostgreSQL database
+- Chrome, Brave, or Edge browser
+
+### 1. Backend Server Setup
 ```bash
-# 1. Clone and install
-git clone <your-repo>
-cd query-shield
-
-# 2. Install dependencies
-cd server && npm install
-cd ../client && npm install
-
-# 3. Set up database
-cp server/.env.example server/.env
-# Update DATABASE_URL in server/.env
-
-# 4. Run migrations
 cd server
-npx prisma migrate dev
+npm install
+cp .env.example .env # Update DATABASE_URL with your PostgreSQL connection string
 npx prisma generate
-
-# 5. Start development
-# Terminal 1:
-cd server && npm run dev
-
-# Terminal 2:
-cd client && npm run dev
+npx prisma migrate dev
+npm run dev
 ```
+*API runs on `http://localhost:5000`*
 
-**📖 Then follow [QUICKSTART.md](./QUICKSTART.md) for step-by-step tutorial**
+### 2. Client Dashboard Setup
+```bash
+cd client
+npm install
+npm run dev
+```
+*Dashboard runs on `http://localhost:3000`*
+
+### 3. Browser Extension Installation
+1. Open Chrome/Edge and navigate to `chrome://extensions/`
+2. Enable **Developer mode** in the top right corner.
+3. Click **Load unpacked** and select the `browser-extension` folder in this repository.
+4. Click the QueryShield extension icon, log in to your account, and activate your firewall!
 
 ---
 
-## 📚 Documentation
+## 📚 Comprehensive Documentation
 
-| Document                                           | Purpose                                | When to Use         |
-| -------------------------------------------------- | -------------------------------------- | ------------------- |
-| **[START_HERE.md](./START_HERE.md)**               | Executive summary & overview           | Read first!         |
-| **[QUICKSTART.md](./QUICKSTART.md)**               | Build first features in 2 hours        | Start coding now    |
-| **[ROADMAP.md](./ROADMAP.md)**                     | Complete development plan (Weeks 1-9+) | Project planning    |
-| **[PHASE_1_CHECKLIST.md](./PHASE_1_CHECKLIST.md)** | Detailed Week 1-2 tasks                | Daily development   |
-| **[ARCHITECTURE.md](./ARCHITECTURE.md)**           | System design & tech architecture      | Technical decisions |
-| **[BUSINESS_STRATEGY.md](./BUSINESS_STRATEGY.md)** | Pricing, marketing, growth plan        | Business planning   |
+QueryShield is heavily documented to ensure smooth onboarding, development, and scaling. Check out our `Documentation/` directory for detailed guides:
+
+### Core Documentation
+* 📌 **[Start Here](./Documentation/START_HERE.md)** - Executive summary and vision.
+* 🏗️ **[Architecture Overview](./Documentation/ARCHITECTURE.md)** - System design, ERDs, and component hierarchy.
+* 🚀 **[Quickstart Guide](./Documentation/QUICKSTART.md)** - Step-by-step 2-hour tutorial.
+* 🛠️ **[API Reference](./Documentation/API_REFERENCE.md)** - Complete details on REST API endpoints and payloads.
+
+### B2B & Enterprise Features
+* 🏢 **[B2B Implementation Guide](./Documentation/B2B_IMPLEMENTATION_GUIDE.md)** & **[B2B Quick Reference](./Documentation/B2B_QUICK_REFERENCE.md)** - Details on Organizations, Teams, and RBAC.
+* 👥 **[Team Notifications](./Documentation/TEAM_NOTIFICATIONS_IMPLEMENTATION.md)** - Guide to real-time team alerts.
+
+### Project & Business Management
+* 🗺️ **[Development Roadmap](./Documentation/ROADMAP.md)** - Long-term project planning.
+* 💰 **[Business Strategy](./Documentation/BUSINESS_STRATEGY.md)** - Go-to-market plan, pricing, and growth strategy.
+* 🧪 **[Testing Guide](./Documentation/TESTING_GUIDE.md)** - Comprehensive testing instructions for the entire stack.
+
+*(See the full [Documentation Guide](./Documentation/DOCS_GUIDE.md) for more!)*
 
 ---
 
-## ✨ Features
+## 🛠️ Tech Stack
 
-### Phase 1 (MVP) - Weeks 1-2
+- **Frontend**: Next.js (App Router), React, Tailwind CSS, Redux Toolkit
+- **Backend**: Node.js, Express.js, TypeScript
+- **Database ORM**: Prisma
+- **Database**: PostgreSQL
+- **Extension**: Vanilla JavaScript, Chrome Extension APIs
+- **Auth**: JWT, bcrypt
 
-- [x] User authentication (JWT)
-- [x] Database schema
-- [ ] Pattern detection (Email, Phone, SSN, Credit Card, API Keys)
-- [ ] Data sanitization (Redact, Mask, Block)
-- [ ] Audit logging
-- [ ] API proxy for OpenAI
+---
 
-### Phase 2 - Weeks 3-4
-
-- [ ] Dashboard UI
-- [ ] Firewall management
-- [ ] Custom rules engine
-- [ ] Analytics dashboard
-- [ ] Team collaboration
+## 📄 License
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
 ### Phase 3 - Weeks 5-6
 
