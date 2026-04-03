@@ -90,43 +90,6 @@ QueryShield is heavily documented to ensure smooth onboarding, development, and 
 
 ---
 
-## 🛠️ Tech Stack
-
-- **Frontend**: Next.js (App Router), React, Tailwind CSS, Redux Toolkit
-- **Backend**: Node.js, Express.js, TypeScript
-- **Database ORM**: Prisma
-- **Database**: PostgreSQL
-- **Extension**: Vanilla JavaScript, Chrome Extension APIs
-- **Auth**: JWT, bcrypt
-
----
-
-## 📄 License
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-### Phase 3 - Weeks 5-6
-
-- [ ] Real-time testing playground
-- [ ] Compliance reports
-- [ ] Advanced detection patterns
-- [ ] Email notifications
-
-### Phase 4 - Weeks 7-8
-
-- [ ] Stripe payment integration
-- [ ] Subscription management
-- [ ] Usage-based billing
-- [ ] Production deployment
-
-### Phase 5 - Week 9+
-
-- [ ] ML-based detection
-- [ ] Multi-provider support (Claude, Gemini)
-- [ ] Enterprise features (SSO, on-prem)
-- [ ] Browser extension
-
----
-
 ## 🏗️ Tech Stack
 
 ### Frontend
@@ -357,8 +320,8 @@ We welcome contributions! Please see [CONTRIBUTING.md](./CONTRIBUTING.md) for gu
 **Next Milestone:** Working authentication + detection engine  
 **ETA:** 2 weeks
 
-[![GitHub issues](https://img.shields.io/github/issues/yourusername/query-shield)](https://github.com/yourusername/query-shield/issues)
-[![GitHub stars](https://img.shields.io/github/stars/yourusername/query-shield)](https://github.com/yourusername/query-shield/stargazers)
+[![GitHub issues](https://img.shields.io/github/issues/Prajualit/query-shield)](https://github.com/Prajualit/query-shield/issues)
+[![GitHub stars](https://img.shields.io/github/stars/Prajualit/query-shield)](https://github.com/Prajualit/query-shield/stargazers)
 
 ---
 
@@ -378,20 +341,10 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Contact & Support
 
-- **Email:** support@queryshield.com
-- **Twitter:** [@QueryShield](https://twitter.com/queryshield)
-- **Discord:** [Join our community](https://discord.gg/queryshield)
-- **Docs:** [docs.queryshield.com](https://docs.queryshield.com)
+- **Email:** prajualit@gmail.com
+- **LinkedIn:** [Prajualit Tickoo](https://linkedin.com/in/prajualit) 
+- **Twitter:** [@prajualitickoo](https://x.com/prajualitickoo)
 
 ---
 
-## 🎯 Next Steps
-
-1. **Read** [START_HERE.md](./START_HERE.md) for overview
-2. **Follow** [QUICKSTART.md](./QUICKSTART.md) to build your first features
-3. **Execute** [PHASE_1_CHECKLIST.md](./PHASE_1_CHECKLIST.md) step by step
-4. **Ship** your MVP in 2 weeks! 🚀
-
----
-
-**Built with ❤️ by developers, for developers protecting AI workflows.**
+**Built with ❤️ by Prajualit, for developers protecting AI workflows.**
